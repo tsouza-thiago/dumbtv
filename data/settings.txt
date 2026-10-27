@@ -1,0 +1,21 @@
+# namespace chave valor  (aplicado com `settings put`; o valor anterior vai para o journal)
+# Só chaves desta lista e de settings.alexa.txt passam pelo guardrail.
+
+# --- desempenho ---
+global com.amazon.tv.settings.featured_item_video_enabled 0   # sem vídeo automático na tela inicial
+global com.amazon.tv.settings.featured_item_video_volume 0.0
+global heads_up_notifications_enabled 0
+global window_animation_scale 0.5
+global transition_animation_scale 0.5
+# animator_duration_scale fica em 1.0 de propósito: em 0.5 o menu da tela inicial
+# do Fire OS 8 fecha sem agir e as Configurações ficam inacessíveis pelo controle.
+
+# --- privacidade (menos envios em segundo plano) ---
+secure amz_limit_ad_tracking 1
+secure limit_ad_tracking 1
+secure non_amz_limit_ad_tracking 1
+secure advertisingIdApp:interestBasedAds:value 0
+secure USAGE_METRICS_UPLOAD_ENABLED 0
+secure usage_metrics_marketing_enabled 0
+secure settingsApp:appUsageData:value 0
+secure settingsApp:deviceUsageData:value 0

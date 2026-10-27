@@ -1,0 +1,50 @@
+# Pacotes que nunca são desativados, parados nem restringidos. O guardrail de
+# lib.sh recusa qualquer comando que mire num deles, mesmo que outra lista o cite.
+# Além desta lista, lib.sh bloqueia por padrão de nome (tela inicial, systemui,
+# webview, atualizador, instalador de pacotes, Bluetooth, teclado).
+
+# --- tela inicial e configurações ---
+com.amazon.tv.launcher                 # a tela inicial
+com.amazon.firehomestarter             # inicia a tela inicial no boot
+com.amazon.tv.settings.v2              # app de configurações
+com.amazon.tv.settings.core
+
+# --- controle remoto, entradas e pareamento ---
+com.amazon.tv.inputpreference.service  # HDMI / troca de entrada
+com.amazon.tv.routing
+com.amazon.tv.devicecontrol            # CEC, controle da TV pelo controle remoto
+com.amazon.tv.devicecontrolsettings
+com.amazon.tv.keypolicymanager         # teclas do controle
+com.amazon.fireinputdevices            # dispositivos de entrada / controle
+com.amazon.autopairservice             # pareamento do controle
+com.amazon.device.bluetoothpa
+com.amazon.device.blepa
+com.amazon.whisperjoin.middleware.np   # configuração / pareamento
+com.amazon.whisperplay.service.install
+com.amazon.vizzini                     # desativado, cobre a tela com "Unable to Detect Your Remote"
+
+# --- configuração inicial (necessária após restauração de fábrica) ---
+com.amazon.tv.oobe
+com.amazon.tv.ooberesource
+
+# --- apps e serviços básicos ---
+com.amazon.webview.chromium            # muitos apps quebram sem ela
+com.amazon.venezia                     # loja de apps
+com.amazon.firebat                     # Prime Video no Fire OS 7
+com.amazon.device.messaging            # desativado, travou um Fire TV na animação de boot
+
+# --- atualizações do sistema (mantêm as correções de segurança) ---
+com.amazon.device.software.ota
+com.amazon.device.software.ota.override
+com.amazon.tv.forcedotaupdater.v2
+com.amazon.tv.easyupgrade
+
+# --- função desconhecida: fora de qualquer ação ---
+com.amazon.tv.developer.dataservice
+com.amazon.device.rdmapplication
+com.amazon.tv.csapp
+
+# --- Android ---
+com.android.systemui
+com.android.packageinstaller
+com.android.permissioncontroller

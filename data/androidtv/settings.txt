@@ -1,3 +1,0 @@
-# Android TV: settings applied with `settings put`. Empty until verified on a
-# real device; the Fire OS keys in data/fireos/settings.txt are Amazon-specific
-# and do nothing here.

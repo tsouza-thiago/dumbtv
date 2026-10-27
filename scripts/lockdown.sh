@@ -1,45 +1,35 @@
 #!/usr/bin/env bash
-# Takes away background execution from the packages Amazon refuses to disable, and
-# their background data on metered networks. Data Saver leaves Wi-Fi and Ethernet
-# alone, so on those the DNS filter is what stops their uploads.
-# Usage: ./scripts/lockdown.sh [--dry-run] [-y]
+# Opcional (risco médio). Corta a execução em segundo plano dos pacotes que a
+# Amazon impede de desativar (data/protected.txt). Não reinicia a TV.
+# Fica de fora: o atualizador do sistema e qualquer pacote com UID de sistema.
+# Uso: ./scripts/lockdown.sh [--apply] [-y]
 set -uo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 parse_flags "$@"
 need_device
-need_supported_fireos
+require_profile
 load_conf
+need_snapshot
+acquire_lock
 
-step "network policy"
-note "data saver on, then a blacklist entry per protected package"
-acmd cmd netpolicy set restrict-background true >/dev/null
+confirm "Cortar o segundo plano dos pacotes protegidos em $SERIAL?" || die "cancelado"
 
-for p in $(list_of "$(fos protected.txt)"); do
-  if keep_pkg "$p"; then
-    printf '  %-46s SKIP (keep list)\n' "$p"; continue
-  fi
-  if ! present "$p"; then
-    printf '  %-46s absent\n' "$p"; continue
-  fi
+step "pacotes protegidos"
+for p in $(list_of "$DATA/protected.txt" | awk '{print $1}'); do
+  if is_forbidden "$p"; then printf '  %-46s PULADO (protegido)\n' "$p"; continue; fi
+  if ! present "$p"; then printf '  %-46s ausente\n' "$p"; continue; fi
   uid=$(uid_of "$p")
-  if [[ -z $uid || $uid -lt 10000 ]]; then
-    printf '  %-46s SKIP (shared system uid %s)\n' "$p" "${uid:-?}"
-    continue
-  fi
-  bg_off "$p"
-  acmd am force-stop "$p" >/dev/null 2>&1
-  acmd cmd netpolicy add restrict-background-blacklist "$uid" >/dev/null
-  printf '  %-46s ops off, metered data blocked (uid %s)\n' "$p" "$uid"
+  if [[ -z $uid || $uid -lt 10000 ]]; then printf '  %-46s PULADO (uid de sistema %s)\n' "$p" "${uid:-?}"; continue; fi
+  for op in RUN_IN_BACKGROUND RUN_ANY_IN_BACKGROUND; do
+    prev=$(appop_mode "$p" "$op")
+    [[ $prev == ignore ]] && continue
+    acmd appops set "$p" "$op" ignore >/dev/null && journal appops "$p" "$op" "$prev"
+  done
+  acmd am force-stop "$p" >/dev/null
+  printf '  %-46s segundo plano cortado (uid %s)\n' "$p" "$uid"
 done
 
-step "verify"
-if [[ $DRY_RUN == 1 ]]; then
-  note "skipped in dry-run"
-else
-  note "data saver: $(dev 'cmd netpolicy get restrict-background' | tr -d '\r')"
-  note "blacklist:  $(dev 'cmd netpolicy list restrict-background-blacklist' | tr -d '\r')"
-  op=RUN_ANY_IN_BACKGROUND; [[ $SDK -lt 28 ]] && op=RUN_IN_BACKGROUND
-  for p in $(list_of "$(fos protected.txt)"); do
-    if present "$p"; then note "$(printf '%-44s' "$p") $(dev "appops get $p $op" | tr -d '\r')"; fi
-  done
+if [[ $APPLY == 1 ]]; then
+  health_check || { warn "a saúde falhou. Desfazendo."; undo_journal; die "desfeito."; }
+  note "ok. Desfaça com ./scripts/restore.sh --apply"
 fi

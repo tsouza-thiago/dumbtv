@@ -1,2 +1,0 @@
-# Android TV: packages that refuse `pm disable-user` ("Cannot disable a protected
-# package"). Empty until someone reports a real one from a real device.

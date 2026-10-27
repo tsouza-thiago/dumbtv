@@ -1,0 +1,3 @@
+# Aplicado pelo debloat.sh só com ALEXA=0 em dumbtv.conf.
+secure alexa_wake_word_disabled 1
+secure voice_disabled 1

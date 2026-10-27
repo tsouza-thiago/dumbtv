@@ -1,1 +1,0 @@
-# Android TV: pre-change values for restore.sh. Empty until verified.

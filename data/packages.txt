@@ -1,0 +1,57 @@
+# Pacotes da Amazon que o debloat.sh desativa no Fire TV Stick 3ª geração
+# (AFTSSS, Fire OS 7.7.1.7). Só desativa, nunca desinstala: o restore.sh ou
+# Configurações > Aplicativos reativa qualquer um.
+#
+# Critério: anúncios, rastreamento, telemetria, experimentos remotos e stubs
+# vazios. Cada processo a menos libera RAM num aparelho de 1 GB.
+#
+# Retirados da lista do upstream por segurança (estão em never-disable.txt):
+#   com.amazon.tv.forcedotaupdater.v2, com.amazon.tv.easyupgrade
+#     -> mexem nas atualizações do sistema; bloqueá-las tira as correções de segurança.
+#   com.amazon.tv.developer.dataservice
+#     -> função não documentada; risco desconhecido.
+
+# --- anúncios, promoções e compras ---
+com.amazon.hybridadidservice           # ID de publicidade
+com.amazon.privacypassservice          # tokens de anúncio
+com.amazon.shoptv.client               # compras na TV
+com.amazon.shoptv.firetv.client        # bloco "Amazon Live Shopping"
+com.amazon.sneakpeek                   # promoções com vídeo automático
+com.amazon.media.recommendations       # fileiras patrocinadas
+com.amazon.systemnotices               # avisos promocionais
+com.amazon.tv.website_launcher         # páginas web de promoção (não é a tela inicial)
+
+# --- rastreamento do que você assiste ---
+com.amazon.tv.acr                      # reconhecimento de conteúdo da tela
+com.amazon.hedwig                      # tempo assistido e engajamento
+
+# --- telemetria, logs e relatórios de falha ---
+com.amazon.tv.fw.metrics
+com.amazon.wirelessmetrics.service
+com.amazon.perfc
+com.amazon.perfcollection
+com.amazon.dp.logger
+com.amazon.logan
+com.amazon.neo.minerva.logcat
+com.amazon.ceviche                     # pipeline de análise
+com.amazon.connectivitydiag            # diagnóstico de rede em segundo plano
+com.amazon.tigris
+
+# --- experimentos e configuração remota ---
+com.amazon.ale
+com.amazon.katoch
+com.amazon.device_remote_config_sync_service
+
+# --- demos, tutoriais e stubs vazios ---
+com.amazon.tv.democontent.provider
+com.amazon.storm.lightning.tutorial
+com.amazon.tmm.tutorial
+com.amazon.tv.releasenotes
+com.amazon.dummy.alarmclock
+com.amazon.dummy.calendar
+com.amazon.dummy.contacts
+com.amazon.dummy.gallery
+com.amazon.dummy.music
+com.amazon.dummy.settings
+com.android.traceur                    # ferramenta de rastreamento do sistema
+com.android.nfc                        # o Fire TV não tem NFC

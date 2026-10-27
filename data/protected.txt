@@ -1,0 +1,14 @@
+# Pacotes que a Amazon impede de desativar. O lockdown.sh (opcional) só corta a
+# execução em segundo plano deles (appops), o que é reversível e não reinicia nada.
+# Pacotes com UID de sistema (< 10000) são pulados: o appops afetaria outros
+# serviços que dividem o mesmo UID.
+#
+# Retirados da lista do upstream por segurança:
+#   com.amazon.device.software.ota, com.amazon.device.software.ota.override
+#     -> atualizador do sistema; não pode perder o segundo plano.
+#   com.amazon.device.rdmapplication, com.amazon.tv.csapp
+#     -> função pouco clara (gerenciamento do aparelho); risco desconhecido.
+
+com.amazon.device.metrics
+com.amazon.device.crashmanager
+com.amazon.ftvads.deeplinking
