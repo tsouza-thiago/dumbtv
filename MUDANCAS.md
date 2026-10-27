@@ -257,9 +257,12 @@ de `debloat.sh` (36 pacotes a desativar, 2 ausentes, 1 já desativado, 5 configu
 pacotes, todos com UID de app) e `dns.sh` (porta 853 do AdGuard responde) rodam sem erro.
 
 O serviço de áudio (`fireos.hardware.audio`) gasta cerca de 20% de um núcleo em repouso.
-O `dumpsys media.audio_flinger` mostra a causa provável: o `com.amazon.whad` (áudio
-multi-room da Alexa, em `alexa.txt`) mantém uma captura de áudio aberta sem parar. Só
-`ALEXA=0` o desativa; confirmar o ganho exige medir antes e depois.
+O `dumpsys media.audio_flinger` mostra o motivo: o `com.amazon.whad` (Whole Home Audio,
+em `alexa.txt`) mantém uma captura do som da TV aberta sem parar. Neste aparelho isso é
+o esperado: ele está ligado a um alto-falante Echo como home theater, e o `whad` envia o som
+a ele. Não é defeito. `ALEXA=0` desligaria o home theater; o comentário de `alexa.txt` e
+o README avisam. Nenhum pacote de `packages.txt` declara componentes de Whole Home Audio,
+A2DP ou sincronia de áudio (conferido com `dumpsys package`).
 
 O `measure.sh` passou a registrar também a CPU do serviço de áudio (`dumpsys cpuinfo`), a
 duração do último boot (`boot_progress_enable_screen` no log de eventos, que só existe

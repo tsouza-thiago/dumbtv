@@ -2,6 +2,9 @@
 # O debloat.sh só desativa estes pacotes com ALEXA=0 em dumbtv.conf (risco médio:
 # o botão de voz para de funcionar; libera RAM). com.amazon.vizzini fica de fora
 # de propósito: veja never-disable.txt.
+# ALEXA=0 também desliga o home theater com alto-falantes Echo (Alexa Home Theater):
+# o com.amazon.whad captura o som da TV e o envia aos Echo (conferido num AFTSSS
+# ligado a um alto-falante Echo como home theater).
 com.amazon.aca                         # the app that owns the microphone
 com.amazon.alexa.datastore.app
 com.amazon.alexadirectivebrokerservice
@@ -17,5 +20,5 @@ com.amazon.smarthomemapviewapp         # "Alexa Smart Home" dashboard
 com.amazon.spotify.mediabrowserservice # lets Alexa play Spotify
 com.amazon.wha.mediabrowserservice     # Alexa multi-room audio
 com.amazon.aria                        # Alexa visual cards
-com.amazon.whad                        # Alexa multi-room audio (Fire OS 6, and the Fire TV Cube on 7)
+com.amazon.whad                        # Whole Home Audio: multi-room e home theater com Echo (ativo no AFTSSS)
 com.amazon.whasettings                 # Fire OS 6, and the Fire TV Cube on 7

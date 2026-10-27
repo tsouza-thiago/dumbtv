@@ -131,7 +131,7 @@ Para desligar:
 ## Configuração opcional (`dumbtv.conf`)
 
 ```sh
-ALEXA=1        # 0 desativa a Alexa e o botão de voz (libera RAM; risco médio)
+ALEXA=1        # 0 desativa a Alexa, o botão de voz e o home theater com Echo (libera RAM; risco médio)
 LOCKDOWN=0     # 1 faz o all.sh rodar o lockdown.sh
 KEEP_APPS=""   # pacotes das listas que você quer manter, separados por espaço
 DNS_HOST=dns.adguard-dns.com   # servidor do dns.sh (ex.: SEU-ID.dns.nextdns.io)
