@@ -2,6 +2,7 @@
 
 Versão enxuta do [dumbtv](https://github.com/humblemuzzu/dumbtv) (commit `755991b`),
 ajustada para **um único aparelho** e focada em **desempenho** com **risco baixo ou médio**.
+Todas as diferenças em relação ao original, com os motivos, estão em [MUDANCAS.md](MUDANCAS.md).
 
 | Item | Valor aceito |
 |---|---|
