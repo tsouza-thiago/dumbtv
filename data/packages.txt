@@ -35,7 +35,6 @@ com.amazon.wirelessmetrics.service
 com.amazon.perfc
 com.amazon.perfcollection
 com.amazon.dp.logger                   # logs; o firestrip avisa que pode afetar o app de controle remoto do celular
-com.amazon.logan                       # logs (fontes divergem: o preflight.sh avisa se for leitor de tela)
 com.amazon.neo.minerva.logcat
 com.amazon.ceviche                     # pipeline de análise
 com.amazon.connectivitydiag            # diagnóstico de rede em segundo plano

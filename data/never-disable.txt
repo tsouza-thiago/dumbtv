@@ -66,6 +66,7 @@ com.amazon.franktvinput
 com.amazon.tv.matter
 com.amazon.tv.mattercohost
 # --- acessibilidade, protetor de tela e apps que o dono pode usar ---
+com.amazon.logan                       # VoiceView (leitor de tela): AccessibilityService FEEDBACK_SPOKEN no AFTSSS
 com.ivona.tts.oem                      # voz do VoiceView
 com.ivona.orchestrator
 com.svox.pico

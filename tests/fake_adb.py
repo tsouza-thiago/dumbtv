@@ -133,6 +133,12 @@ elif w[:2] == ['dumpsys', 'package']:
                 f'        abc123 {p}/.ScreenReaderService filter def456')
 elif w[:3] == ['dumpsys', 'activity', 'activities']:
     out(f'  ResumedActivity: ActivityRecord{{1a2b u0 {st["front"]} t5}}')
+elif w == ['dumpsys', 'activity', 'services', 'com.android.systemui']:
+    out('ACTIVITY MANAGER SERVICES (dumpsys activity services)', '  User 0 active services:')
+    if 'com.android.systemui' in st['running']:       # hospedado em device.services, como no AFTSSS
+        out('  * ServiceRecord{291548c u0 com.android.systemui/.SystemUIService}',
+            '    intent={cmp=com.android.systemui/.SystemUIService}',
+            '    app=ProcessRecord{c58d1cb 834:com.amazon.device.services/1000}')
 elif w[:2] == ['dumpsys', 'meminfo']:
     out('Total PSS by process:')
     for n, p in enumerate(st['running']):
@@ -167,14 +173,18 @@ elif w[:2] == ['am', 'start'] and 'android.intent.category.HOME' in w:
 elif w[:3] == ['ps', '-A', '-o']:
     out('NAME', *st['running'])
 elif w[:1] == ['pidof']:
-    if w[1] in st['running']:
+    # O SystemUI não tem processo próprio no Fire OS: pidof volta vazio.
+    if w[1] in st['running'] and w[1] != 'com.android.systemui':
         out(str(1000 + st['running'].index(w[1])))
 elif w == ['cat', '/proc/meminfo']:
     freed = sum(12 for p, i in pkgs.items() if i['state'] == 3)
     out('MemTotal:         999000 kB', 'MemFree:          100000 kB',
         f'MemAvailable:     {(300 + freed) * 1024} kB')
-elif w == ['cat', '/proc/loadavg']:
-    out('1.20 0.95 0.80 2/612 4321')
+elif w == ['cat', '/proc/loadavg']:                  # bloqueado ao shell no Fire OS 7
+    print('cat: /proc/loadavg: Permission denied', file=sys.stderr)
+    rc = 1
+elif w == ['uptime']:
+    out(' 12:25:05 up 30 min,  0 users,  load average: 1.20, 0.95, 0.80')
 elif w == ['cat', '/proc/uptime']:
     out('1800.50 3000.10')
 elif w[:2] == ['dumpsys', 'gfxinfo']:

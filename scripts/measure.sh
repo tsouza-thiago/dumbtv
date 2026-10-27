@@ -20,7 +20,8 @@ avail=$(awk '/^MemAvailable:/ {print int($2/1024)}' <<<"$mem")
 total=$(awk '/^MemTotal:/ {print int($2/1024)}' <<<"$mem")
 procs=$(running_names | awk 'NR>1 && NF' | wc -l | tr -d ' ')
 data=$(dev 'df -h /data' | tr -d '\r' | awk 'NR==2 {print $4" livres de "$2}')
-load=$(dev 'cat /proc/loadavg' | tr -d '\r' | awk 'NF>=3 && $1 ~ /^[0-9.]+$/ {print $1" "$2" "$3}')
+# O Fire OS 7 nega /proc/loadavg ao shell do adb; o `uptime` mostra a mesma carga.
+load=$(dev 'uptime' | tr -d '\r' | sed -nE 's/.*load average: *([0-9.]+), *([0-9.]+), *([0-9.]+).*/\1 \2 \3/p' | head -1)
 up=$(dev 'cat /proc/uptime' | tr -d '\r' | awk '$1 ~ /^[0-9.]+$/ {print int($1/60)}')
 # Quadros da tela inicial desde que o processo dela começou (zera no reinício).
 gfx=$(dev 'dumpsys gfxinfo com.amazon.tv.launcher' | tr -d '\r')

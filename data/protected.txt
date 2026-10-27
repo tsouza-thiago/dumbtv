@@ -10,12 +10,13 @@
 #     -> função pouco clara (gerenciamento do aparelho); risco desconhecido.
 #   com.fireos.usagestats.proxy
 #     -> pode alimentar a fileira de apps recentes da tela inicial; fica de fora.
+#   com.amazon.device.logmanager
+#     -> tem UID de sistema (1000) no AFTSSS; o lockdown.sh sempre o pularia.
 #
-# Protegidos pela Amazon no mesmo build (PS7717/5741), segundo o debloatfiretv:
-# com.amazon.device.logmanager e com.amazon.adep.
+# Protegido pela Amazon no mesmo build (PS7717/5741), segundo o debloatfiretv:
+# com.amazon.adep.
 
 com.amazon.device.metrics
 com.amazon.device.crashmanager
 com.amazon.ftvads.deeplinking
-com.amazon.device.logmanager           # gerenciador de logs
 com.amazon.adep                        # pipeline de eventos de análise

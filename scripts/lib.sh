@@ -278,6 +278,13 @@ reboot_wait() {
 }
 
 # Saúde do sistema. Com --home, envia o botão Home e confere a tela da Amazon.
+# No Fire OS o SystemUI roda dentro do processo com.amazon.device.services, então
+# `pidof com.android.systemui` volta vazio (conferido num AFTSSS real). Confere o
+# serviço SystemUIService e o processo que o hospeda.
+systemui_up() {
+  awk '/SystemUIService\}/ {f=1; next} f && /ServiceRecord\{/ {f=0} f && /app=ProcessRecord/ {ok=1}
+       END {exit !ok}' <<<"$(dev 'dumpsys activity services com.android.systemui' | tr -d '\r')"
+}
 health_check() {
   local bad=0 off p home
   [[ $(dev1 getprop sys.boot_completed) == 1 ]] || { warn "boot não concluído"; bad=1; }
@@ -287,7 +294,7 @@ health_check() {
     grep -qx -- "$p" "$SNAP/packages-disabled.txt" 2>/dev/null && continue
     warn "pacote essencial desativado: $p"; bad=1
   done
-  grep -q '[0-9]' <<<"$(dev 'pidof com.android.systemui')" || { warn "systemui não está rodando"; bad=1; }
+  systemui_up || { warn "systemui não está rodando"; bad=1; }
   if [[ ${1:-} == --home ]]; then
     dev 'am start -a android.intent.action.MAIN -c android.intent.category.HOME' >/dev/null
     nap 3

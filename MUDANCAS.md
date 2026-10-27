@@ -180,7 +180,7 @@ cada mudança. Cada item abaixo diz a evidência e o risco.
 |---|---|---|
 | `com.amazon.tigris` sai de `packages.txt` e entra em `never-disable.txt` | Um guia o liga à loja de apps (atualização dos apps). Num AFTSSS real no build `PS7717.5741N`, o cleanyourtv-app o mantém ligado | Nenhum (deixa de desativar) |
 | Novos em `packages.txt`: `com.amazon.kso.blackbird` (anúncios "Special Offers"), `com.android.printspooler`, `com.android.bips`, `com.amazon.naatyam`, `com.amazon.minitv.android.app`, `com.amazon.recess` | Desativados sem problema no mesmo build (`PS7717/5741`) pelo debloatfiretv. O `kso.blackbird` também foi desligado sem erro num AFTSSS real. O original já tratava impressão e miniTV como apps removíveis | Baixo. `KEEP_APPS` mantém qualquer um |
-| Novos em `protected.txt`: `com.amazon.device.logmanager`, `com.amazon.adep` | A Amazon recusa desativá-los no mesmo build (debloatfiretv). São logs e análise | Médio, mas só com o `lockdown.sh` (opcional). UID de sistema é pulado |
+| Novo em `protected.txt`: `com.amazon.adep` | A Amazon recusa desativá-lo no mesmo build (debloatfiretv). É análise. O `com.amazon.device.logmanager` entrou e saiu: tem UID de sistema no AFTSSS (§9.7) | Médio, mas só com o `lockdown.sh` (opcional). UID de sistema é pulado |
 | `com.fireos.usagestats.proxy` fica de fora | Pode alimentar a fileira de apps recentes da tela inicial | — |
 | 25 pacotes novos em `never-disable.txt` (teclado, conta e login, transmissão, DIAL, entradas, acessibilidade, protetor de tela, Amazon Kids, Luna) | Lista "keep" do debloatfiretv e alertas do firestrip | Nenhum (só protege) |
 | Comentários corrigidos: `hedwig` é o Amazon News; `dp.logger` pode afetar o app de controle remoto do celular | debloatfiretv, firestrip e catálogo do original | Nenhum |
@@ -191,6 +191,7 @@ As fontes divergem sobre `com.amazon.logan`: arquivo de logs ou leitor de tela (
 Em vez de confiar numa descrição, o `debloat.sh` agora pula **qualquer** pacote que declare
 um serviço de acessibilidade (`dumpsys package`) e também não corta o segundo plano dele.
 Quem usa leitor de tela fica protegido.
+Na TV real, o `logan` é o VoiceView e saiu de `packages.txt` (§9.7).
 Custo: uma consulta `dumpsys` por pacote presente.
 
 ### 9.3 DNS privado
@@ -219,7 +220,7 @@ para IPs reais; `mads.amazon.com` e `doubleclick.net` voltam `0.0.0.0`. O domín
 
 ### 9.5 Medição
 
-O `measure.sh` agora registra também a carga da CPU (`/proc/loadavg`), o tempo ligado e a
+O `measure.sh` agora registra também a carga da CPU (pelo `uptime`; §9.7), o tempo ligado e a
 porcentagem de quadros lentos da tela inicial (`dumpsys gfxinfo`). Tudo é só leitura. Os
 quadros contam desde que a tela inicial abriu: navegue 1 minuto por ela antes de medir.
 
@@ -231,5 +232,24 @@ quadros contam desde que a tela inicial abriu: navegue 1 minuto por ela antes de
 | `cmd package bg-dexopt-job` | Nenhuma medição no Fire TV; gasta CPU e armazenamento |
 | Limite de processos em segundo plano | Zera no reinício e não passa pelo journal |
 | `setprop`, bloqueio de OTA, troca de launcher, VPN | Fora da filosofia do fork |
+
+### 9.7 Conferência no aparelho real (27/10/2026)
+
+Feita só com leitura (`getprop`, `pm list`, `dumpsys`, `settings get`, `appops get`,
+`ping -c 1`) num AFTSSS `PS7717.5741N`, tela inicial `7321874.1`. O perfil confere com
+`device.conf`.
+
+| Achado | Correção |
+|---|---|
+| O SystemUI roda dentro do processo `com.amazon.device.services`: `pidof com.android.systemui` volta vazio. A checagem de saúde sempre falhava, e o `debloat.sh` desfaria tudo depois do reinício | `systemui_up` confere o `SystemUIService` e o processo dele em `dumpsys activity services`. O adb simulado imita o Fire OS; teste novo com o SystemUI parado |
+| O shell do adb não pode ler `/proc/loadavg` (Permission denied): a carga saía sempre `n/d` | O `measure.sh` lê a carga do `uptime`. O adb simulado nega o `/proc/loadavg` |
+| `com.amazon.logan` declara `AccessibilityService` com `FEEDBACK_SPOKEN`: é o VoiceView | Sai de `packages.txt` e entra em `never-disable.txt` |
+| `com.amazon.device.logmanager` tem UID 1000 | Sai de `protected.txt`: o `lockdown.sh` sempre o pularia |
+| Os UIDs reais de `metrics`, `crashmanager` e `deeplinking` são de app (10182, 10016, 10103) | O adb simulado usa esses UIDs; o teste do UID de sistema força um |
+
+Confirmado sem mudança: `tigris` tem componentes da Appstore; `hedwig` é o Fire Channels com
+`HedwigTvInputService`; todas as chaves de `settings.txt` existem; os 12 domínios de
+`dns-check.txt` resolvem; a TV alcança a porta 853 do AdGuard. Não testado, porque muda a TV:
+o DNS privado depois do reinício.
 
 Pesquisa completa, fontes e contra-provas: [PESQUISA.md](PESQUISA.md).

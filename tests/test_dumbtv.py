@@ -48,9 +48,10 @@ def fixture():
     del pkgs['com.amazon.tv.acr']                         # ausente no stick
     pkgs['com.amazon.perfc']['protected'] = True          # a Amazon recusa
     pkgs['com.android.nfc']['state'] = 2                  # desativado pelo sistema
-    pkgs['com.amazon.device.metrics'] = {'state': 0, 'uid': 10031, 'protected': True}
-    pkgs['com.amazon.device.crashmanager'] = {'state': 0, 'uid': 1000, 'protected': True}
-    pkgs['com.amazon.ftvads.deeplinking'] = {'state': 0, 'uid': 10044, 'protected': True}
+    # UIDs lidos num AFTSSS real (pm list packages -U).
+    pkgs['com.amazon.device.metrics'] = {'state': 0, 'uid': 10182, 'protected': True}
+    pkgs['com.amazon.device.crashmanager'] = {'state': 0, 'uid': 10016, 'protected': True}
+    pkgs['com.amazon.ftvads.deeplinking'] = {'state': 0, 'uid': 10103, 'protected': True}
     pkgs['com.netflix.ninja'] = {'state': 0, 'uid': 10200}
     running = ['init', 'surfaceflinger', 'com.android.systemui', 'com.amazon.tv.launcher',
                'com.amazon.ceviche', 'com.amazon.hedwig', 'com.amazon.device.metrics',
@@ -266,6 +267,15 @@ class Debloat(TV):
         self.assertIn('desfeitas', r.stderr)
         self.assert_back_to_initial()
 
+    def test_systemui_parado_depois_do_reinicio_desfaz(self):
+        self.ok('preflight.sh')
+        self.tweak(lambda s: s['base_running'].remove('com.android.systemui'))
+        r = self.run_script('debloat.sh', '--apply', '-y')
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('systemui não está rodando', r.stderr)
+        self.assertIn('desfeitas', r.stderr)
+        self.assert_back_to_initial()
+
     def test_tv_cai_no_meio_e_restore_recupera(self):
         self.ok('preflight.sh')
         self.tweak(lambda s: s.update({'offline_after': s['calls'] + 40}))
@@ -286,14 +296,14 @@ class Debloat(TV):
     def test_servico_de_acessibilidade_e_pulado(self):
         self.ok('preflight.sh')
         def a11y(s):
-            s['pkgs']['com.amazon.logan']['a11y'] = True
-            s['running'].append('com.amazon.logan')
+            s['pkgs']['com.amazon.dp.logger']['a11y'] = True
+            s['running'].append('com.amazon.dp.logger')
         self.tweak(a11y)
         r = self.ok('debloat.sh', '--apply', '-y')
         self.assertIn('PULADO (serviço de acessibilidade)', r.stdout)
-        self.assertEqual(self.state_of('com.amazon.logan'), 0)
+        self.assertEqual(self.state_of('com.amazon.dp.logger'), 0)
         self.assertEqual(self.state_of('com.amazon.ceviche'), 3)
-        self.assertEqual([c for c in self.mutations() if 'com.amazon.logan' in c], [])
+        self.assertEqual([c for c in self.mutations() if 'com.amazon.dp.logger' in c], [])
 
     def test_keep_apps(self):
         self.ok('preflight.sh')
@@ -357,6 +367,8 @@ class Guardrails(TV):
 
 class Extras(TV):
     def test_lockdown_pula_uid_de_sistema_e_restaura(self):
+        self.tweak(lambda s: s['pkgs']['com.amazon.device.crashmanager'].update({'uid': 1000}))
+        self.initial = self.read()
         self.ok('preflight.sh')
         self.ok('lockdown.sh', '--apply', '-y')
         ops = self.read()['appops']
