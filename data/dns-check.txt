@@ -1,0 +1,15 @@
+# Domínios que o dns.sh testa pela TV depois de ligar o DNS privado.
+#
+# must: precisam resolver para um IP real. Se algum falhar ou vier bloqueado,
+#       o dns.sh desfaz a mudança sozinho. Inclui os servidores de atualização
+#       do Fire OS: o DNS nunca pode bloquear as correções de segurança.
+# probe: domínio de anúncio usado só para informar se o filtro está ativo.
+#        Não causa reversão (cada provedor responde de um jeito).
+
+must www.amazon.com
+must api.amazon.com
+must softwareupdates.amazon.com
+must updates.amazon.com
+must www.primevideo.com
+must www.google.com
+probe doubleclick.net

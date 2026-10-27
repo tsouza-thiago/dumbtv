@@ -56,21 +56,24 @@ confirm() {
 }
 
 # --- configuração do dono (dumbtv.conf) -------------------------------------
-# Lido linha a linha, nunca com `source`: só três chaves e valores validados.
+# Lido linha a linha, nunca com `source`: só quatro chaves e valores validados.
+HOST_RE='^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$'
 load_conf() {
-  ALEXA=1; LOCKDOWN=0; KEEP_APPS=""
+  ALEXA=1; LOCKDOWN=0; KEEP_APPS=""; DNS_HOST=dns.adguard-dns.com
   [[ -f $CONF ]] || return 0
   local line key val
   while IFS= read -r line || [[ -n $line ]]; do
     line=${line%%#*}
     line=$(printf '%s' "$line" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
     [[ -z $line ]] && continue
-    [[ $line =~ ^([A-Z_]+)=\"?([a-z0-9._\ ]*)\"?$ ]] || die "linha inválida em dumbtv.conf: $line"
+    [[ $line =~ ^([A-Z_]+)=\"?([a-z0-9._\ -]*)\"?$ ]] || die "linha inválida em dumbtv.conf: $line"
     key=${BASH_REMATCH[1]}; val=${BASH_REMATCH[2]}
     case $key in
       ALEXA|LOCKDOWN) [[ $val == 0 || $val == 1 ]] || die "$key deve ser 0 ou 1"
                       printf -v "$key" '%s' "$val" ;;
       KEEP_APPS)      KEEP_APPS=$val ;;
+      DNS_HOST)       [[ $val =~ $HOST_RE ]] || die "DNS_HOST inválido: $val"
+                      DNS_HOST=$val ;;
       *) die "chave desconhecida em dumbtv.conf: $key" ;;
     esac
   done < "$CONF"
@@ -84,7 +87,10 @@ load_conf() {
 list_of() { sed 's/#.*//; s/[[:space:]]*$//' "$1" | awk 'NF'; }
 never_disable() { list_of "$DATA/never-disable.txt" | awk '{print $1}'; }
 all_targets() { { list_of "$DATA/packages.txt"; list_of "$DATA/alexa.txt"; } | awk '{print $1}'; }
-setting_keys() { { list_of "$DATA/settings.txt"; list_of "$DATA/settings.alexa.txt"; } | awk '{print $1" "$2}'; }
+setting_keys() {
+  { list_of "$DATA/settings.txt"; list_of "$DATA/settings.alexa.txt"; list_of "$DATA/settings.dns.txt"; } |
+    awk '{print $1" "$2}'
+}
 
 keep_pkg() { local k; for k in $KEEP_APPS; do [[ $k == "$1" ]] && return 0; done; return 1; }
 
@@ -183,7 +189,13 @@ check_cmd() {
     "settings put"|"settings delete")
       [[ $3 == secure || $3 == global ]] || { echo "namespace não permitido"; return 1; }
       [[ $2 == put && $# == 5 || $2 == delete && $# == 4 ]] || { echo "formato inválido"; return 1; }
-      grep -qxF -- "$3 $4" <<<"$(setting_keys)" || { echo "chave fora de settings*.txt"; return 1; } ;;
+      grep -qxF -- "$3 $4" <<<"$(setting_keys)" || { echo "chave fora de settings*.txt"; return 1; }
+      if [[ $2 == put && $4 == private_dns_mode ]]; then
+        [[ $5 =~ ^(off|opportunistic|hostname)$ ]] || { echo "modo de DNS inválido"; return 1; }
+      fi
+      if [[ $2 == put && $4 == private_dns_specifier ]]; then
+        [[ $5 =~ $HOST_RE ]] || { echo "servidor de DNS inválido"; return 1; }
+      fi ;;
     "appops set")
       [[ $# == 5 ]] || { echo "formato inválido"; return 1; }
       [[ $4 == RUN_IN_BACKGROUND || $4 == RUN_ANY_IN_BACKGROUND ]] || { echo "operação não permitida"; return 1; }
@@ -284,9 +296,27 @@ health_check() {
   return $bad
 }
 
-# Desfaz o journal de trás para frente.
+# Desfaz o journal inteiro, de trás para frente, e o arquiva.
 undo_journal() {
   [[ -s $JOURNAL ]] || { note "nada a desfazer (journal vazio)"; return 0; }
+  undo_lines < "$JOURNAL"
+  if [[ $APPLY == 1 ]]; then mv "$JOURNAL" "$REPORT/journal.desfeito-$(date +%Y%m%d-%H%M%S).tsv"; fi
+}
+
+# Desfaz só as linhas do journal que casam com o padrão (grep -E) e as tira dele.
+undo_where() {
+  local sel
+  [[ -s $JOURNAL ]] && sel=$(grep -E -- "$1" "$JOURNAL")
+  [[ -n ${sel:-} ]] || { note "nada a desfazer"; return 0; }
+  undo_lines <<<"$sel"
+  if [[ $APPLY == 1 ]]; then
+    grep -vE -- "$1" "$JOURNAL" > "$JOURNAL.tmp"
+    mv "$JOURNAL.tmp" "$JOURNAL"
+  fi
+}
+
+# Lê linhas do journal na entrada e desfaz cada uma, da última para a primeira.
+undo_lines() {
   local kind a b c
   while IFS=$'\t' read -r kind a b c; do
     case $kind in
@@ -297,6 +327,14 @@ undo_journal() {
                note "configuração   $b -> $c" ;;
       *) warn "linha desconhecida no journal: $kind" ;;
     esac
-  done < <(awk '{l[NR]=$0} END {for (i=NR; i>0; i--) print l[i]}' "$JOURNAL")
-  if [[ $APPLY == 1 ]]; then mv "$JOURNAL" "$REPORT/journal.desfeito-$(date +%Y%m%d-%H%M%S).tsv"; fi
+  done < <(awk 'NF {l[++n]=$0} END {for (i=n; i>0; i--) print l[i]}')
 }
+
+# --- DNS ---------------------------------------------------------------------
+# Resolve um nome pela TV (o ping imprime o IP mesmo sem resposta ICMP).
+# Imprime o IP, ou nada quando o nome não resolve.
+tv_resolve() {
+  dev "ping -c 1 -W 2 $1" | tr -d '\r' | sed -n 's/^PING [^ ]* (\([^)]*\)).*/\1/p' | head -1
+}
+
+is_block_ip() { [[ $1 =~ ^(0\.0\.0\.0|127\.0\.0\.1|::|::1)$ ]]; }

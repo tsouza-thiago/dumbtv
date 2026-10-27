@@ -1,0 +1,5 @@
+# Chaves do DNS privado (Android 9). Só o dns.sh as altera; o valor real do
+# servidor vem de DNS_HOST em dumbtv.conf. O guardrail de lib.sh aceita apenas
+# modo off|opportunistic|hostname e um nome de servidor válido.
+global private_dns_specifier HOST
+global private_dns_mode hostname

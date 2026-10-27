@@ -23,7 +23,7 @@ Para um único aparelho, focado em desempenho, essas escolhas trazem mais risco 
 | Removido | Motivo |
 |---|---|
 | `launcher/` (dumbtv home) e `scripts/launcher.sh`, `home.sh`, `accessibility.sh` | Troca a interface. No Fire OS, isso exige contornar a tela inicial da Amazon com um serviço de acessibilidade: risco alto |
-| `scripts/dnsfilter.sh`, `appdata.sh`, `appui.sh` e `data/blocklists/` | Instala uma VPN local que roda o tempo todo (gasta parte do 1 GB de RAM) e bloqueia as atualizações de segurança |
+| `scripts/dnsfilter.sh`, `appdata.sh`, `appui.sh` e `data/blocklists/` | Instala uma VPN local que roda o tempo todo (gasta parte do 1 GB de RAM) e bloqueia as atualizações de segurança. Substituído pelo `dns.sh` (seção 5) |
 | `scripts/youtube.sh` | Troca o app do YouTube por um app de terceiros; fora do escopo de desempenho |
 | `scripts/configure.sh` | Substituído por um `dumbtv.conf` de três chaves, lido sem executar código |
 | `scripts/discover.sh`, `contribute.sh` | Ferramentas para descobrir pacotes em aparelhos novos e enviar contribuições |
@@ -85,6 +85,8 @@ Configurações inacessível num aparelho com Fire OS 8.
 | 10 | **Uma execução por vez** | `acquire_lock` (`report/.lock`) |
 | 11 | **Configuração sem código.** `dumbtv.conf` é lido linha a linha, aceita só `ALEXA`, `LOCKDOWN` e `KEEP_APPS` e recusa qualquer outra coisa | `load_conf` |
 | 12 | **Sem desinstalação.** Nenhum caminho do código chama `pm uninstall` | `check_cmd` |
+| 13 | **DNS validado.** `private_dns_mode` só aceita `off`, `opportunistic` ou `hostname`; o servidor precisa ser um nome válido | `check_cmd`, `HOST_RE` |
+| 14 | **Desfazer parcial.** `dns.sh --off` desfaz só as linhas de DNS do journal e mantém o debloat | `undo_where` |
 
 ## 5. Scripts novos
 
@@ -92,6 +94,36 @@ Configurações inacessível num aparelho com Fire OS 8.
   maiores consumidores de memória. Salva em `report/` e compara com a medição anterior.
 - **`cache.sh`**: limpa o cache dos apps com `pm trim-caches` (risco baixo). O aparelho tem
   só 8 GB, e pouco espaço livre deixa o sistema lento.
+- **`dns.sh`**: liga o DNS privado nativo do Android (DNS-over-TLS) com um servidor que bloqueia
+  anúncios. Substitui o filtro DNS por VPN do original.
+
+### Por que DNS privado em vez da VPN do original
+
+| | VPN local (original) | DNS privado (`dns.sh`) |
+|---|---|---|
+| App extra rodando | sim, o tempo todo | não |
+| Consumo de RAM | sim | não |
+| Atualizações de segurança | bloqueadas de propósito | **testadas**: se ficarem bloqueadas, o script desfaz |
+| Lista de bloqueio | baixada de `@latest`, sem versão fixa | a do provedor escolhido |
+| Passo manual na TV | permissão da VPN | nenhum |
+| Desfazer | script próprio | `dns.sh --off` ou `restore.sh` |
+
+### Checagens do `dns.sh`
+
+1. **Antes:** a TV precisa resolver os domínios de `data/dns-check.txt` e o computador precisa
+   alcançar o servidor na porta 853. Se não, nada muda.
+2. **Depois:** os mesmos domínios precisam resolver para um IP real, incluindo
+   `softwareupdates.amazon.com` e `updates.amazon.com`. Se algum falhar ou vier bloqueado
+   (`0.0.0.0`), o script desfaz sozinho e confirma que a TV voltou a resolver nomes.
+3. **Informativo:** testa um domínio de anúncio para dizer se o filtro está ativo.
+
+### Riscos que continuam
+
+- Se o servidor sair do ar dias depois, a TV fica sem internet. Não há vigia contínuo.
+- A Amazon esconde a opção do menu: com o DNS privado ligado, a Depuração ADB precisa
+  continuar ligada. O `verify.sh` avisa isso.
+- Ainda não está confirmado que o Fire OS 7.7.1.7 respeita o DNS privado. O teste
+  informativo do passo 3 mostra isso na primeira execução real.
 
 ## 6. Bug corrigido
 
@@ -108,9 +140,9 @@ testes de guardrail cobrem o caso.
 
 - **`tests/fake_adb.py`**: um `adb` simulado que imita o Fire TV Stick 3ª geração no build
   PS7717/5741. Ele guarda o estado da TV em JSON (pacotes, configurações, appops, processos,
-  boot) e registra cada comando recebido. Simula pacotes protegidos, pacotes desativados pelo
+  boot, resolução de nomes e servidores DNS-over-TLS) e registra cada comando recebido. Simula pacotes protegidos, pacotes desativados pelo
   sistema, processos que sobrevivem à desativação, queda de conexão e tela inicial quebrada.
-- **`tests/test_dumbtv.py`**: 25 testes com `unittest`, sem dependências externas.
+- **`tests/test_dumbtv.py`**: 37 testes com `unittest`, sem dependências externas.
 
 | Grupo | O que é testado |
 |---|---|
@@ -119,6 +151,7 @@ testes de guardrail cobrem o caso.
 | Debloat | Simulação não muda nada; exige snapshot; sem confirmação não aplica; aplicação + verificação + restauração idêntica ao original; idempotência; falha de saúde com desfazer automático; queda da TV no meio + restauração; trava; `KEEP_APPS`; Alexa desligada |
 | Guardrails | 14 comandos perigosos bloqueados sem chegar à TV; comando permitido passa; `dumbtv.conf` malicioso não executa código |
 | Extras | Lockdown pula UID de sistema e nunca toca no atualizador; cache; medição compara; `all.sh` em simulação e aplicação |
+| DNS | Simulação; ligar + verificar + desligar; servidor fora do ar desfaz sozinho; provedor que bloqueia atualizações é recusado; porta 853 fechada e TV sem internet não mudam nada; servidor inválido recusado; servidor do `dumbtv.conf`; `--off` preserva o debloat; `restore.sh` desfaz tudo; guardrail do DNS |
 
 Para rodar:
 

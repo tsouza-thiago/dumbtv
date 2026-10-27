@@ -73,6 +73,8 @@ def fixture():
         'running': list(running), 'base_running': list(running),
         'sticky': ['com.amazon.hedwig'],                  # continua vivo após desativar
         'boot_id': '1', 'front': LAUNCHER, 'calls': 0, 'offline_after': None,
+        'internet': True,
+        'dot': {'dns.adguard-dns.com': {'up': True, 'blocks': ['doubleclick.net']}},
     }
 
 
@@ -360,6 +362,112 @@ class Extras(TV):
         self.assertEqual(self.mutations(), [])
         self.ok('all.sh', '--apply', '-y')
         self.assertEqual(self.state_of('com.amazon.ceviche'), 3)
+
+
+class Dns(TV):
+    def dns(self):
+        return self.read()['settings']['global'].get('private_dns_mode'), \
+            self.read()['settings']['global'].get('private_dns_specifier')
+
+    def test_listas_do_dns(self):
+        must = [r[1] for r in listing('dns-check.txt') if r[0] == 'must']
+        self.assertIn('softwareupdates.amazon.com', must)
+        self.assertIn('updates.amazon.com', must)
+        keys = [r[1] for r in listing('settings.dns.txt')]
+        self.assertEqual(sorted(keys), ['private_dns_mode', 'private_dns_specifier'])
+
+    def test_simulacao_nao_muda_nada(self):
+        self.ok('preflight.sh')
+        r = self.ok('dns.sh')
+        self.assertIn('[simulação] settings put global private_dns_mode hostname', r.stderr)
+        self.assertEqual(self.mutations(), [])
+
+    def test_liga_verifica_e_desliga(self):
+        self.ok('preflight.sh')
+        r = self.ok('dns.sh', '--apply', '-y')
+        self.assertEqual(self.dns(), ('hostname', 'dns.adguard-dns.com'))
+        self.assertIn('filtro ativo', r.stderr)
+        self.assertIn('NÃO desligue a Depuração ADB', r.stderr)
+        v = self.run_script('verify.sh')               # sem debloat: só a parte do DNS importa aqui
+        self.assertIn('a TV resolve nomes', v.stdout)
+        self.assertIn('mantenha a Depuração ADB LIGADA', v.stderr)
+        self.ok('dns.sh', '--off', '--apply', '-y')
+        self.assertEqual(self.dns(), (None, None))
+        self.assert_back_to_initial()
+
+    def test_servidor_fora_do_ar_desfaz_sozinho(self):
+        self.ok('preflight.sh')
+        self.tweak(lambda s: s['dot']['dns.adguard-dns.com'].update({'up': False}))
+        r = self.run_script('dns.sh', '--apply', '-y')
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('NÃO RESOLVE', r.stdout)
+        self.assert_back_to_initial()
+        self.assertEqual((self.report / 'journal.tsv').read_text(), '')
+
+    def test_provedor_que_bloqueia_atualizacoes_e_recusado(self):
+        self.ok('preflight.sh')
+        self.tweak(lambda s: s['dot']['dns.adguard-dns.com']['blocks'].append('softwareupdates.amazon.com'))
+        r = self.run_script('dns.sh', '--apply', '-y')
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('softwareupdates.amazon.com', r.stdout)
+        self.assertIn('BLOQUEADO', r.stdout)
+        self.assert_back_to_initial()
+
+    def test_porta_853_inacessivel_nao_muda_nada(self):
+        self.ok('preflight.sh')
+        r = self.run_script('dns.sh', '--apply', '-y', env={'DUMBTV_DOT_PROBE': 'fail'})
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('853', r.stderr)
+        self.assertEqual(self.mutations(), [])
+
+    def test_tv_sem_internet_nao_muda_nada(self):
+        self.ok('preflight.sh')
+        self.tweak(lambda s: s.update({'internet': False}))
+        r = self.run_script('dns.sh', '--apply', '-y')
+        self.assertNotEqual(r.returncode, 0)
+        self.assertEqual(self.mutations(), [])
+
+    def test_servidor_invalido_e_recusado(self):
+        self.ok('preflight.sh')
+        for host in ('evil;reboot', 'dns..x', '$(id)', 'localhost'):
+            r = self.run_script('dns.sh', f'--host={host}', '--apply', '-y')
+            self.assertNotEqual(r.returncode, 0, host)
+        self.assertNotEqual(self.run_script('dns.sh', conf='DNS_HOST=x;y\n').returncode, 0)
+        self.assertEqual(self.mutations(), [])
+
+    def test_servidor_personalizado_pelo_conf(self):
+        self.ok('preflight.sh')
+        self.tweak(lambda s: s['dot'].update({'abc123.dns.nextdns.io': {'up': True, 'blocks': []}}))
+        r = self.ok('dns.sh', '--apply', '-y', conf='DNS_HOST=abc123.dns.nextdns.io\n')
+        self.assertEqual(self.dns(), ('hostname', 'abc123.dns.nextdns.io'))
+        self.assertIn('o filtro pode não estar ativo', r.stderr)
+
+    def test_desligar_dns_preserva_o_debloat(self):
+        self.ok('preflight.sh')
+        self.ok('debloat.sh', '--apply', '-y')
+        self.ok('dns.sh', '--apply', '-y')
+        self.ok('dns.sh', '--off', '--apply', '-y')
+        self.assertEqual(self.dns(), (None, None))
+        self.assertEqual(self.state_of('com.amazon.ceviche'), 3)
+        self.ok('restore.sh', '--apply', '-y')
+        self.assert_back_to_initial()
+
+    def test_restore_desfaz_tudo_inclusive_o_dns(self):
+        self.ok('preflight.sh')
+        self.ok('debloat.sh', '--apply', '-y')
+        self.ok('dns.sh', '--apply', '-y')
+        self.ok('restore.sh', '--apply', '-y')
+        self.assert_back_to_initial()
+
+    def test_guardrail_do_dns(self):
+        g = Guardrails('test_comando_permitido_passa')
+        g.state, g.log, g.conf, g.report = self.state, self.log, self.conf, self.report
+        for cmd in (['settings', 'put', 'global', 'private_dns_mode', 'strict'],
+                    ['settings', 'put', 'global', 'private_dns_specifier', 'a;b'],
+                    ['settings', 'put', 'global', 'http_proxy', '1.2.3.4:8080']):
+            r = g.acmd(*cmd)
+            self.assertNotEqual(r.returncode, 0, cmd)
+        self.assertEqual(self.commands(), [])
 
 
 if __name__ == '__main__':

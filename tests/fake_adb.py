@@ -39,6 +39,20 @@ def reboot():
     st['front'] = 'com.example.broken/.Main' if st.get('break_home') else LAUNCHER
 
 
+def resolve(host):
+    """Resolução de nomes: rede normal, ou o servidor DNS-over-TLS configurado."""
+    if not st.get('internet', True):
+        return None
+    g = st['settings'].get('global', {})
+    if g.get('private_dns_mode') == 'hostname':
+        srv = st.get('dot', {}).get(g.get('private_dns_specifier'))
+        if not srv or not srv.get('up'):
+            return None
+        if host in srv.get('blocks', []):
+            return '0.0.0.0'
+    return '93.184.216.34'
+
+
 # --- comandos fora do shell ---------------------------------------------------
 if args == ['start-server'] or args[:1] in (['connect'], ['disconnect']):
     sys.exit(0)
@@ -155,6 +169,14 @@ elif w[:2] == ['df', '-h']:
         f'/dev/block/dm-1 5.2G  3.3G {free}  63% /data')
 elif w in (['svc', 'power', 'reboot'], ['reboot']):
     reboot()
+elif w[:1] == ['ping']:
+    host = w[-1]
+    ip = resolve(host)
+    if ip:
+        out(f'PING {host} ({ip}) 56(84) bytes of data.')
+    else:
+        print(f'ping: unknown host {host}', file=sys.stderr)
+        rc = 2
 else:
     print(f'/system/bin/sh: {w[0] if w else ""}: inaccessible or not found', file=sys.stderr)
     rc = 127

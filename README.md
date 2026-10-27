@@ -21,6 +21,7 @@ Os scripts conferem esses valores (`device.conf`) e **recusam** qualquer outro a
 | `debloat.sh` | baixo | com `--apply` | Desativa 35 pacotes de anúncios/telemetria e aplica 13 ajustes de desempenho e privacidade |
 | `lockdown.sh` | médio, opcional | com `--apply` | Corta o segundo plano de 3 pacotes que a Amazon não deixa desativar |
 | `cache.sh` | baixo, opcional | com `--apply` | Limpa o cache dos apps para liberar armazenamento |
+| `dns.sh` | baixo a médio, opcional | com `--apply` | Liga o DNS privado com bloqueio de anúncios, com checagens e desfazer automático |
 | `verify.sh` | nenhum | não | Confere o resultado e a saúde da TV |
 | `restore.sh` | — | com `--apply` | Desfaz tudo o que foi registrado no journal |
 | `all.sh` | — | com `--apply` | preflight → medição → debloat → (lockdown) → verify |
@@ -31,7 +32,7 @@ animações de janela e transição em 0,5. `animator_duration_scale` **não** �
 ## O que nunca faz
 
 - Desinstalar qualquer coisa.
-- Trocar a tela inicial, instalar apps, instalar VPN ou filtro DNS.
+- Trocar a tela inicial, instalar apps ou instalar VPN.
 - Tocar na tela inicial, nas configurações, no controle remoto, no HDMI, no Bluetooth,
   na loja, no Prime Video ou no **atualizador do sistema** (`data/never-disable.txt`).
 - Gravar em `/system`, usar root ou fazer restauração de fábrica.
@@ -86,12 +87,48 @@ Para desfazer:
 ./scripts/restore.sh --apply
 ```
 
+## DNS privado (opcional, `dns.sh`)
+
+Liga o DNS privado nativo do Android (DNS-over-TLS) apontando para um servidor com
+bloqueio de anúncios e rastreamento. Não instala app, não usa VPN e não gasta RAM.
+O padrão é `dns.adguard-dns.com`; troque com `DNS_HOST` no `dumbtv.conf` ou `--host=`.
+
+```bash
+./scripts/dns.sh
+```
+```bash
+./scripts/dns.sh --apply
+```
+Para desligar:
+```bash
+./scripts/dns.sh --off --apply
+```
+
+**Proteções:**
+- Antes de mudar: confere se a TV tem internet e se o servidor responde na porta 853.
+  Se algo falhar, nada é alterado.
+- Depois de mudar: confere se os domínios de `data/dns-check.txt` resolvem, **incluindo os
+  servidores de atualização do Fire OS**. Se algum não resolver ou vier bloqueado,
+  desfaz sozinho.
+- Informa se o filtro está mesmo ativo (o Fire OS pode ignorar o DNS privado; isso
+  ainda não foi confirmado neste build).
+- `--off` desfaz só o DNS; o debloat continua aplicado.
+
+**Riscos que continuam:**
+- Se o servidor sair do ar **dias depois**, a TV fica sem internet. Não há vigia contínuo.
+- A Amazon esconde a opção do menu. **Enquanto o DNS privado estiver ligado, mantenha a
+  Depuração ADB ligada**: é a única forma de desligá-lo sem restauração de fábrica.
+  O ADB local funciona mesmo sem DNS, porque usa o IP.
+- Apps com anúncios no meio do vídeo podem não reproduzir.
+- O provedor de DNS vê os endereços que a TV consulta.
+
 ## Configuração opcional (`dumbtv.conf`)
 
 ```sh
 ALEXA=1        # 0 desativa a Alexa e o botão de voz (libera RAM; risco médio)
 LOCKDOWN=0     # 1 faz o all.sh rodar o lockdown.sh
 KEEP_APPS=""   # pacotes das listas que você quer manter, separados por espaço
+DNS_HOST=dns.adguard-dns.com   # servidor do dns.sh (ex.: SEU-ID.dns.nextdns.io)
 ```
 
 ## Testes
@@ -103,9 +140,11 @@ Nenhuma TV é tocada.
 python3 -I -m unittest discover -s tests -v
 ```
 
-Os 25 testes cobrem: perfil errado, simulação sem mudanças, aplicação e restauração exata,
+Os 37 testes cobrem: perfil errado, simulação sem mudanças, aplicação e restauração exata,
 idempotência, falha de saúde com desfazer automático, TV caindo no meio, trava,
-guardrail de comandos, `dumbtv.conf` malicioso, Alexa, lockdown, cache e medição.
+guardrail de comandos, `dumbtv.conf` malicioso, Alexa, lockdown, cache, medição e DNS
+privado (servidor fora do ar, provedor que bloqueia atualizações, porta 853 fechada,
+TV sem internet, servidor inválido, desligar só o DNS).
 
 ## Limites conhecidos
 

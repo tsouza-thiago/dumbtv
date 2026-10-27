@@ -11,4 +11,5 @@ Instruções para um agente (Claude Code ou outro) que opera este projeto numa T
 5. Nunca use `ALLOW_UNTESTED=1` sem o dono pedir.
 6. Nunca desinstale, nunca grave em `/system`, nunca use root e nunca faça restauração de fábrica.
 7. Resposta inesperada ou TV sem resposta: pare e sugira `./scripts/restore.sh --apply`.
-8. Rode os testes (`python3 -I -m unittest discover -s tests`) depois de mudar qualquer script.
+8. Com o DNS privado ligado (`dns.sh`), nunca desligue a Depuração ADB e nunca sugira desligá-la.
+9. Rode os testes (`python3 -I -m unittest discover -s tests`) depois de mudar qualquer script.

@@ -34,6 +34,15 @@ done < <(list_of "$DATA/settings.txt"; [[ $ALEXA == 0 ]] && list_of "$DATA/setti
 step "saúde"
 health_check && ok "pacotes essenciais ativos e systemui rodando" || bad "saúde com problemas (veja os avisos)"
 
-step "lembrete"
-note "terminou? Desligue a Depuração ADB na TV: Configurações > Minha Fire TV > Opções do desenvolvedor"
+step "dns privado"
+if [[ $(dev1 settings get global private_dns_mode) == hostname ]]; then
+  ok "ligado com $(dev1 settings get global private_dns_specifier)"
+  ip=$(tv_resolve www.amazon.com)
+  [[ -n $ip ]] && ! is_block_ip "$ip" && ok "a TV resolve nomes" || bad "a TV não resolve www.amazon.com: rode ./scripts/dns.sh --off --apply"
+  warn "mantenha a Depuração ADB LIGADA: é a única forma de desligar o DNS privado"
+else
+  note "desligado"
+  step "lembrete"
+  note "terminou? Desligue a Depuração ADB na TV: Configurações > Minha Fire TV > Opções do desenvolvedor"
+fi
 exit $fail
