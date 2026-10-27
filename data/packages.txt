@@ -10,6 +10,9 @@
 #     -> mexem nas atualizações do sistema; bloqueá-las tira as correções de segurança.
 #   com.amazon.tv.developer.dataservice
 #     -> função não documentada; risco desconhecido.
+#   com.amazon.tigris
+#     -> um guia o liga à loja de apps (atualização dos apps) e o cleanyourtv-app o
+#        mantém ligado num AFTSSS PS7717.5741N. Função não confirmada.
 
 # --- anúncios, promoções e compras ---
 com.amazon.hybridadidservice           # ID de publicidade
@@ -18,24 +21,24 @@ com.amazon.shoptv.client               # compras na TV
 com.amazon.shoptv.firetv.client        # bloco "Amazon Live Shopping"
 com.amazon.sneakpeek                   # promoções com vídeo automático
 com.amazon.media.recommendations       # fileiras patrocinadas
+com.amazon.kso.blackbird               # anúncios "Special Offers"
 com.amazon.systemnotices               # avisos promocionais
 com.amazon.tv.website_launcher         # páginas web de promoção (não é a tela inicial)
 
 # --- rastreamento do que você assiste ---
 com.amazon.tv.acr                      # reconhecimento de conteúdo da tela
-com.amazon.hedwig                      # tempo assistido e engajamento
+com.amazon.hedwig                      # Amazon News; também uma entrada de TV (não é HDMI)
 
 # --- telemetria, logs e relatórios de falha ---
 com.amazon.tv.fw.metrics
 com.amazon.wirelessmetrics.service
 com.amazon.perfc
 com.amazon.perfcollection
-com.amazon.dp.logger
-com.amazon.logan
+com.amazon.dp.logger                   # logs; o firestrip avisa que pode afetar o app de controle remoto do celular
+com.amazon.logan                       # logs (fontes divergem: o preflight.sh avisa se for leitor de tela)
 com.amazon.neo.minerva.logcat
 com.amazon.ceviche                     # pipeline de análise
 com.amazon.connectivitydiag            # diagnóstico de rede em segundo plano
-com.amazon.tigris
 
 # --- experimentos e configuração remota ---
 com.amazon.ale
@@ -55,3 +58,9 @@ com.amazon.dummy.music
 com.amazon.dummy.settings
 com.android.traceur                    # ferramenta de rastreamento do sistema
 com.android.nfc                        # o Fire TV não tem NFC
+# --- impressão e stubs sem uso no Brasil (KEEP_APPS mantém qualquer um) ---
+com.android.printspooler               # impressão (o stick não imprime)
+com.android.bips                       # impressão
+com.amazon.naatyam                     # conteúdo indiano (stub)
+com.amazon.minitv.android.app          # Amazon miniTV, só na Índia
+com.amazon.recess                      # central de jogos casuais

@@ -3,6 +3,7 @@
 Versão enxuta do [dumbtv](https://github.com/humblemuzzu/dumbtv) (commit `755991b`),
 ajustada para **um único aparelho** e focada em **desempenho** com **risco baixo ou médio**.
 Todas as diferenças em relação ao original, com os motivos, estão em [MUDANCAS.md](MUDANCAS.md).
+A pesquisa de fontes e as contra-provas que embasam as listas estão em [PESQUISA.md](PESQUISA.md).
 
 | Item | Valor aceito |
 |---|---|
@@ -17,9 +18,9 @@ Os scripts conferem esses valores (`device.conf`) e **recusam** qualquer outro a
 | Script | Risco | Muda a TV? | Função |
 |---|---|---|---|
 | `preflight.sh` | nenhum | não | Confere o aparelho, mostra o estado e salva o snapshot original |
-| `measure.sh` | nenhum | não | Mede RAM, processos e armazenamento e compara com a medição anterior |
-| `debloat.sh` | baixo | com `--apply` | Desativa 35 pacotes de anúncios/telemetria e aplica 13 ajustes de desempenho e privacidade |
-| `lockdown.sh` | médio, opcional | com `--apply` | Corta o segundo plano de 3 pacotes que a Amazon não deixa desativar |
+| `measure.sh` | nenhum | não | Mede RAM, processos, armazenamento, carga da CPU e quadros lentos da tela inicial, e compara com a medição anterior |
+| `debloat.sh` | baixo | com `--apply` | Desativa 40 pacotes de anúncios/telemetria/stubs e aplica 13 ajustes de desempenho e privacidade |
+| `lockdown.sh` | médio, opcional | com `--apply` | Corta o segundo plano de 5 pacotes que a Amazon não deixa desativar |
 | `cache.sh` | baixo, opcional | com `--apply` | Limpa o cache dos apps para liberar armazenamento |
 | `dns.sh` | baixo a médio, opcional | com `--apply` | Liga o DNS privado com bloqueio de anúncios, com checagens e desfazer automático |
 | `verify.sh` | nenhum | não | Confere o resultado e a saúde da TV |
@@ -110,6 +111,11 @@ Para desligar:
 - Depois de mudar: confere se os domínios de `data/dns-check.txt` resolvem, **incluindo os
   servidores de atualização do Fire OS**. Se algum não resolver ou vier bloqueado,
   desfaz sozinho.
+- Depois de mudar: reinicia a TV e repete as checagens. Há relatos de Fire TV que só
+  perdem a internet depois de reiniciar com o DNS privado. Se falhar, desfaz sozinho.
+  `--no-reboot` pula esse passo (com aviso).
+- Também confere os CDNs de download das atualizações e o `device-messaging-na.amazon.com`
+  (o Prime Video depende dele).
 - Informa se o filtro está mesmo ativo (o Fire OS pode ignorar o DNS privado; isso
   ainda não foi confirmado neste build).
 - `--off` desfaz só o DNS; o debloat continua aplicado.
@@ -140,7 +146,7 @@ Nenhuma TV é tocada.
 python3 -I -m unittest discover -s tests -v
 ```
 
-Os 37 testes cobrem: perfil errado, simulação sem mudanças, aplicação e restauração exata,
+Os 44 testes cobrem: perfil errado, simulação sem mudanças, aplicação e restauração exata,
 idempotência, falha de saúde com desfazer automático, TV caindo no meio, trava,
 guardrail de comandos, `dumbtv.conf` malicioso, Alexa, lockdown, cache, medição e DNS
 privado (servidor fora do ar, provedor que bloqueia atualizações, porta 853 fechada,

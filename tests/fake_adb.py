@@ -37,11 +37,16 @@ def reboot():
     st['running'] = [p for p in st['base_running'] if p in enabled or '.' not in p
                      or p not in st['pkgs']]
     st['front'] = 'com.example.broken/.Main' if st.get('break_home') else LAUNCHER
+    for srv in st.get('dot', {}).values():            # servidor que falha só depois do boot
+        if srv.get('down_after_reboot'):
+            srv['up'] = False
 
 
 def resolve(host):
     """Resolução de nomes: rede normal, ou o servidor DNS-over-TLS configurado."""
     if not st.get('internet', True):
+        return None
+    if host in st.get('dead_hosts', []):              # domínio que deixou de existir
         return None
     g = st['settings'].get('global', {})
     if g.get('private_dns_mode') == 'hostname':
@@ -122,6 +127,10 @@ elif w[:2] == ['dumpsys', 'package']:
         out(f'  Package [{p}] (abc123):', f'    userId={i["uid"]}', f'    versionName={ver}',
             f'    User 0: ceDataInode=1 installed=true hidden=false suspended=false '
             f'stopped=false notLaunched=false enabled={i["state"]}')
+        if i.get('a11y'):
+            out('  Service Resolver Table:', '    Non-Data Actions:',
+                '      android.accessibilityservice.AccessibilityService:',
+                f'        abc123 {p}/.ScreenReaderService filter def456')
 elif w[:3] == ['dumpsys', 'activity', 'activities']:
     out(f'  ResumedActivity: ActivityRecord{{1a2b u0 {st["front"]} t5}}')
 elif w[:2] == ['dumpsys', 'meminfo']:
@@ -152,6 +161,9 @@ elif w[:2] == ['am', 'force-stop']:
     st['running'] = [r for r in st['running'] if r != w[2]]
 elif w[:2] == ['am', 'start'] and 'android.intent.category.HOME' in w:
     st['front'] = 'com.example.broken/.Main' if st.get('break_home') else LAUNCHER
+    for srv in st.get('dot', {}).values():            # servidor que falha só depois do boot
+        if srv.get('down_after_reboot'):
+            srv['up'] = False
 elif w[:3] == ['ps', '-A', '-o']:
     out('NAME', *st['running'])
 elif w[:1] == ['pidof']:
@@ -161,6 +173,14 @@ elif w == ['cat', '/proc/meminfo']:
     freed = sum(12 for p, i in pkgs.items() if i['state'] == 3)
     out('MemTotal:         999000 kB', 'MemFree:          100000 kB',
         f'MemAvailable:     {(300 + freed) * 1024} kB')
+elif w == ['cat', '/proc/loadavg']:
+    out('1.20 0.95 0.80 2/612 4321')
+elif w == ['cat', '/proc/uptime']:
+    out('1800.50 3000.10')
+elif w[:2] == ['dumpsys', 'gfxinfo']:
+    n = len(st['running'])                            # menos processos, menos quadros lentos
+    out(f'** Graphics info for pid 1234 [{w[2]}] **', '', 'Stats since: 123456789ns',
+        'Total frames rendered: 1000', f'Janky frames: {n * 10} ({n:.2f}%)')
 elif w == ['cat', '/proc/sys/kernel/random/boot_id']:
     out(st['boot_id'])
 elif w[:2] == ['df', '-h']:

@@ -44,6 +44,37 @@ com.amazon.tv.developer.dataservice
 com.amazon.device.rdmapplication
 com.amazon.tv.csapp
 
+# --- loja, conta e login ---
+com.amazon.tigris                      # ligado à loja de apps (função não confirmada)
+com.amazon.dcp                         # framework de conta e OTA
+com.amazon.identity.auth.device.authorization
+com.amazon.imp                         # lista de apps e login
+com.amazon.tcomm                       # comunicação; o app de controle remoto do celular usa
+com.amazon.tcomm.client
+# --- teclado, configurações e armazenamento ---
+com.amazon.tv.ime                      # teclado
+com.amazon.tv.settings
+com.amazon.settings.systemupdates      # tela de atualização do sistema
+com.amazon.device.lowstoragemanager
+# --- transmissão, descoberta e entradas ---
+com.amazon.cast.sink                   # espelhamento de tela
+com.amazon.dialservice                 # DIAL ("transmitir para a TV" do YouTube e Netflix)
+com.amazon.whisperlink.core.android    # descoberta pelo app de controle remoto
+com.amazon.tv.livetv
+com.amazon.tifobserver
+com.amazon.franktvinput
+com.amazon.tv.matter
+com.amazon.tv.mattercohost
+# --- acessibilidade, protetor de tela e apps que o dono pode usar ---
+com.ivona.tts.oem                      # voz do VoiceView
+com.ivona.orchestrator
+com.svox.pico
+com.amazon.ftv.screensaver
+com.amazon.tahoe                       # Amazon Kids
+com.amazon.spiderpork                  # Amazon Luna
+com.android.documentsui                # seletor de arquivos
+# Fonte das entradas acima: lista "keep" do debloatfiretv (mesmo build) e alertas do
+# firestrip. Nenhuma estava nas listas de ação; aqui elas ficam protegidas de vez.
 # --- Android ---
 com.android.systemui
 com.android.packageinstaller

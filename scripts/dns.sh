@@ -7,13 +7,15 @@
 #   - testa a internet da TV e a porta 853 do servidor ANTES de mudar;
 #   - grava os valores anteriores no journal;
 #   - depois de mudar, confere se os domínios de data/dns-check.txt resolvem,
-#     incluindo os servidores de atualização; se algum falhar, desfaz sozinho.
+#     incluindo os servidores de atualização; se algum falhar, desfaz sozinho;
+#   - reinicia a TV e repete as checagens (alguns Fire TV só perdem a internet
+#     depois de reiniciar); se falhar, desfaz sozinho.
 #
 # ATENÇÃO: com o DNS privado ligado, NÃO desligue a Depuração ADB. A Amazon
 # esconde essa opção do menu: se o servidor sair do ar, o ADB é a única forma
 # de desligar o DNS privado sem restauração de fábrica.
 #
-# Uso: ./scripts/dns.sh [--host=SERVIDOR] [--apply] [-y]
+# Uso: ./scripts/dns.sh [--host=SERVIDOR] [--apply] [-y] [--no-reboot]
 #      ./scripts/dns.sh --off [--apply] [-y]       desliga e volta ao valor anterior
 set -uo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -46,23 +48,17 @@ fi
 host=${HOST_ARG:-$DNS_HOST}
 [[ $host =~ $HOST_RE ]] || die "servidor inválido: $host"
 
-check_list() { list_of "$DATA/dns-check.txt" | awk -v k="$1" '$1==k {print $2}'; }
-
 # Testa a porta 853 (DNS-over-TLS) a partir do computador, que está na mesma rede.
 probe_dot() {
   if [[ ${DUMBTV_TEST:-0} == 1 ]]; then [[ ${DUMBTV_DOT_PROBE:-ok} == ok ]]; return; fi
   timeout 6 bash -c "exec 3<>/dev/tcp/$1/853" 2>/dev/null
 }
 
-# Resolve com até 3 tentativas. Imprime o IP ou nada.
-resolve_retry() {
-  local i ip
-  for i in 1 2 3; do
-    ip=$(tv_resolve "$1")
-    [[ -n $ip ]] && { printf '%s' "$ip"; return 0; }
-    nap 3
-  done
-  return 1
+rollback() {
+  warn "falhou:${1}. Desfazendo o DNS automaticamente."
+  undo_where "$DNS_PAT"
+  resolve_retry www.amazon.com >/dev/null || warn "a TV ainda não resolve nomes. Reinicie a TV e rode ./scripts/dns.sh --off --apply"
+  die "o DNS privado foi desligado e os valores anteriores voltaram."
 }
 
 step "plano"
@@ -70,10 +66,16 @@ note "servidor     $host (DNS-over-TLS, porta 853)"
 note "agora        modo $(dev1 settings get global private_dns_mode), servidor $(dev1 settings get global private_dns_specifier)"
 
 step "checagens antes de mudar"
-for d in $(check_list must); do
-  ip=$(resolve_retry "$d") || die "a TV não resolve $d nem antes da mudança. Confira a internet da TV. Nada foi alterado."
+read -ra must <<<"$(dns_list must | tr '\n' ' ')"
+for d in "${must[@]}"; do
+  resolve_retry "$d" >/dev/null || die "a TV não resolve $d nem antes da mudança. Confira a internet da TV. Nada foi alterado."
 done
 note "internet da TV ok"
+# Os CDNs de atualização só contam se resolvem agora; os que resolvem viram obrigatórios.
+ota=()
+for d in $(dns_list ota); do
+  if resolve_retry "$d" >/dev/null; then ota+=("$d"); else note "$d não resolve nem antes; ignorado"; fi
+done
 probe_dot "$host" || die "o computador não alcança $host na porta 853. Nada foi alterado."
 note "servidor $host responde na porta 853"
 
@@ -95,23 +97,10 @@ done
 
 step "checagens depois de mudar"
 nap 5
-failed=""
-for d in $(check_list must); do
-  if ip=$(resolve_retry "$d"); then
-    if is_block_ip "$ip"; then printf '  %-36s BLOQUEADO (%s)\n' "$d" "$ip"; failed="$failed $d"
-    else printf '  %-36s ok (%s)\n' "$d" "$ip"; fi
-  else
-    printf '  %-36s NÃO RESOLVE\n' "$d"; failed="$failed $d"
-  fi
-done
-if [[ -n $failed ]] || ! health_check; then
-  warn "falhou:${failed:- saúde do sistema}. Desfazendo o DNS automaticamente."
-  undo_where "$DNS_PAT"
-  ip=$(resolve_retry www.amazon.com) || warn "a TV ainda não resolve nomes. Reinicie a TV e rode ./scripts/dns.sh --off --apply"
-  die "o DNS privado foi desligado e os valores anteriores voltaram."
-fi
+dns_verify "${must[@]}" ${ota[@]+"${ota[@]}"} || rollback "$DNS_FAILED"
+health_check || rollback " saúde do sistema"
 
-for d in $(check_list probe); do
+for d in $(dns_list probe); do
   ip=$(tv_resolve "$d")
   if [[ -n $ip ]] && ! is_block_ip "$ip"; then
     warn "$d resolveu para $ip: o filtro pode não estar ativo (o Fire OS pode ignorar o DNS privado ou o provedor não bloqueia esse domínio)"
@@ -119,6 +108,18 @@ for d in $(check_list probe); do
     note "filtro ativo: $d bloqueado"
   fi
 done
+
+# Há relatos de Fire TV que perdem a internet só depois de reiniciar com o DNS
+# privado ligado. Por isso o dns.sh reinicia e confere tudo de novo.
+if [[ $NO_REBOOT == 1 ]]; then
+  warn "sem reiniciar (--no-reboot): a checagem depois do reinício não foi feita"
+else
+  step "checagens depois do reinício"
+  reboot_wait
+  nap 20
+  dns_verify "${must[@]}" ${ota[@]+"${ota[@]}"} || rollback "$DNS_FAILED (depois do reinício)"
+  health_check --home || rollback " saúde do sistema depois do reinício"
+fi
 
 step "pronto"
 note "DNS privado ligado com $host. Para desligar: ./scripts/dns.sh --off --apply"

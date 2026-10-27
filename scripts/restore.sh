@@ -12,7 +12,7 @@ acquire_lock
 
 step "plano"
 if [[ ! -s $JOURNAL ]]; then note "journal vazio: nada a desfazer"; exit 0; fi
-note "desfazer $(wc -l < "$JOURNAL" | tr -d ' ') mudanças registradas em ${JOURNAL#$ROOT/}"
+note "desfazer $(wc -l < "$JOURNAL" | tr -d ' ') mudanças registradas em ${JOURNAL#"$ROOT"/}"
 confirm "Desfazer as mudanças em $SERIAL?" || die "cancelado"
 
 step "desfazendo"

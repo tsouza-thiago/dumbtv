@@ -35,19 +35,20 @@ Para um único aparelho, focado em desempenho, essas escolhas trazem mais risco 
 
 ### `data/packages.txt` (desativados pelo `debloat.sh`)
 
-São 35 pacotes de anúncios, rastreamento, telemetria, experimentos e stubs vazios.
-Três pacotes da lista original **saíram**:
+São 40 pacotes de anúncios, rastreamento, telemetria, experimentos e stubs vazios
+(veja a seção 9 para as mudanças de 27/10/2026). Quatro pacotes da lista original **saíram**:
 
 | Pacote | Motivo |
 |---|---|
 | `com.amazon.tv.forcedotaupdater.v2` | Participa das atualizações obrigatórias. Desativá-lo pode atrasar as correções de segurança |
 | `com.amazon.tv.easyupgrade` | Também participa das atualizações |
 | `com.amazon.tv.developer.dataservice` | Função não documentada: risco desconhecido |
+| `com.amazon.tigris` | Ligado à loja de apps segundo a pesquisa (seção 9) |
 
 ### `data/protected.txt` (opcional, `lockdown.sh`)
 
-Ficaram só 3 pacotes: `com.amazon.device.metrics`, `com.amazon.device.crashmanager` e
-`com.amazon.ftvads.deeplinking`. Quatro **saíram**:
+Ficaram 3 pacotes do original: `com.amazon.device.metrics`, `com.amazon.device.crashmanager` e
+`com.amazon.ftvads.deeplinking`. A seção 9 acrescentou 2. Quatro **saíram**:
 
 | Pacote | Motivo |
 |---|---|
@@ -142,16 +143,16 @@ testes de guardrail cobrem o caso.
   PS7717/5741. Ele guarda o estado da TV em JSON (pacotes, configurações, appops, processos,
   boot, resolução de nomes e servidores DNS-over-TLS) e registra cada comando recebido. Simula pacotes protegidos, pacotes desativados pelo
   sistema, processos que sobrevivem à desativação, queda de conexão e tela inicial quebrada.
-- **`tests/test_dumbtv.py`**: 37 testes com `unittest`, sem dependências externas.
+- **`tests/test_dumbtv.py`**: 44 testes com `unittest`, sem dependências externas (o `shellcheck` é opcional).
 
 | Grupo | O que é testado |
 |---|---|
-| Listas | Sem duplicados, sem cruzamento com `never-disable`, sem nomes de risco, atualizador protegido, `animator` intocado, sintaxe bash |
+| Listas | Sem duplicados, sem cruzamento com `never-disable`, sem nomes de risco, atualizador protegido, `animator` intocado, sintaxe bash; `tigris` protegido; `shellcheck` sem avisos |
 | Perfil | Modelo errado bloqueia; build ou tela inicial diferentes bloqueiam; `ALLOW_UNTESTED` libera; restauração funciona depois de uma atualização |
-| Debloat | Simulação não muda nada; exige snapshot; sem confirmação não aplica; aplicação + verificação + restauração idêntica ao original; idempotência; falha de saúde com desfazer automático; queda da TV no meio + restauração; trava; `KEEP_APPS`; Alexa desligada |
+| Debloat | Simulação não muda nada; exige snapshot; sem confirmação não aplica; aplicação + verificação + restauração idêntica ao original; idempotência; falha de saúde com desfazer automático; queda da TV no meio + restauração; trava; `KEEP_APPS`; Alexa desligada; serviço de acessibilidade é pulado |
 | Guardrails | 14 comandos perigosos bloqueados sem chegar à TV; comando permitido passa; `dumbtv.conf` malicioso não executa código |
-| Extras | Lockdown pula UID de sistema e nunca toca no atualizador; cache; medição compara; `all.sh` em simulação e aplicação |
-| DNS | Simulação; ligar + verificar + desligar; servidor fora do ar desfaz sozinho; provedor que bloqueia atualizações é recusado; porta 853 fechada e TV sem internet não mudam nada; servidor inválido recusado; servidor do `dumbtv.conf`; `--off` preserva o debloat; `restore.sh` desfaz tudo; guardrail do DNS |
+| Extras | Lockdown pula UID de sistema e nunca toca no atualizador; cache; medição compara; `all.sh` em simulação e aplicação; medição de quadros lentos e carga da CPU |
+| DNS | Simulação; ligar + verificar + desligar; servidor fora do ar desfaz sozinho; provedor que bloqueia atualizações é recusado; porta 853 fechada e TV sem internet não mudam nada; servidor inválido recusado; servidor do `dumbtv.conf`; `--off` preserva o debloat; `restore.sh` desfaz tudo; guardrail do DNS; falha só depois do reinício desfaz sozinho; `--no-reboot` avisa; CDN de atualização bloqueado desfaz; CDN aposentado não trava |
 
 Para rodar:
 
@@ -165,4 +166,70 @@ python3 -I -m unittest discover -s tests -v
   `./scripts/preflight.sh` e `./scripts/debloat.sh` **sem `--apply`** e confira a saída.
 - O código de modelo `AFTSSS` vem do catálogo do projeto original. Se a TV informar outro
   valor, o `preflight.sh` bloqueia com segurança.
-- A checagem estática usou `bash -n`. O `shellcheck` não foi executado.
+- A checagem estática usa `bash -n` e o `shellcheck` (teste `test_shellcheck`, pulado se a
+  ferramenta não estiver instalada: `sudo apt install shellcheck`).
+
+## 9. Melhorias da pesquisa (27/10/2026)
+
+Origem: uma pesquisa de ferramentas e listas da comunidade, com contra-prova antes de
+cada mudança. Cada item abaixo diz a evidência e o risco.
+
+### 9.1 Listas
+
+| Mudança | Evidência | Risco |
+|---|---|---|
+| `com.amazon.tigris` sai de `packages.txt` e entra em `never-disable.txt` | Um guia o liga à loja de apps (atualização dos apps). Num AFTSSS real no build `PS7717.5741N`, o cleanyourtv-app o mantém ligado | Nenhum (deixa de desativar) |
+| Novos em `packages.txt`: `com.amazon.kso.blackbird` (anúncios "Special Offers"), `com.android.printspooler`, `com.android.bips`, `com.amazon.naatyam`, `com.amazon.minitv.android.app`, `com.amazon.recess` | Desativados sem problema no mesmo build (`PS7717/5741`) pelo debloatfiretv. O `kso.blackbird` também foi desligado sem erro num AFTSSS real. O original já tratava impressão e miniTV como apps removíveis | Baixo. `KEEP_APPS` mantém qualquer um |
+| Novos em `protected.txt`: `com.amazon.device.logmanager`, `com.amazon.adep` | A Amazon recusa desativá-los no mesmo build (debloatfiretv). São logs e análise | Médio, mas só com o `lockdown.sh` (opcional). UID de sistema é pulado |
+| `com.fireos.usagestats.proxy` fica de fora | Pode alimentar a fileira de apps recentes da tela inicial | — |
+| 25 pacotes novos em `never-disable.txt` (teclado, conta e login, transmissão, DIAL, entradas, acessibilidade, protetor de tela, Amazon Kids, Luna) | Lista "keep" do debloatfiretv e alertas do firestrip | Nenhum (só protege) |
+| Comentários corrigidos: `hedwig` é o Amazon News; `dp.logger` pode afetar o app de controle remoto do celular | debloatfiretv, firestrip e catálogo do original | Nenhum |
+
+### 9.2 Guardrail de acessibilidade
+
+As fontes divergem sobre `com.amazon.logan`: arquivo de logs ou leitor de tela (VoiceView).
+Em vez de confiar numa descrição, o `debloat.sh` agora pula **qualquer** pacote que declare
+um serviço de acessibilidade (`dumpsys package`) e também não corta o segundo plano dele.
+Quem usa leitor de tela fica protegido.
+Custo: uma consulta `dumpsys` por pacote presente.
+
+### 9.3 DNS privado
+
+| Mudança | Motivo |
+|---|---|
+| O `dns.sh` reinicia a TV e repete as checagens; se falhar, desfaz sozinho (`--no-reboot` pula, com aviso) | Relatos de Fire TV que perdem a internet só depois do reinício (fórum da Amazon, XDA, gist) |
+| `device-messaging-na.amazon.com` virou `must` | O Prime Video não abre sem ele (PR #54 do original); listas como a do Perflyst o bloqueiam |
+| Novo tipo `ota` para os CDNs de download das atualizações | Contam como `must` se resolviam antes da mudança; um CDN aposentado não trava o script |
+| `mads.amazon.com` virou `probe` | Anúncios da própria Amazon; o AdGuard DNS o bloqueia |
+| O `verify.sh` confere todos os `must` e `ota`, não só `www.amazon.com` | Pega um provedor que passe a bloquear atualizações depois |
+
+Contra-prova feita em 27/10/2026 pelo AdGuard DNS (DoH): todos os `must` e `ota` resolvem
+para IPs reais; `mads.amazon.com` e `doubleclick.net` voltam `0.0.0.0`. O domínio
+`distro-download.amazon.com`, citado em listas antigas, não existe mais e ficou de fora.
+
+### 9.4 Qualidade
+
+- O `shellcheck` 0.10.0 rodou em todos os scripts: nenhum erro. Foram corrigidas três
+  expansões sem aspas (`${x#$ROOT/}`) e variáveis de laço sem uso.
+- Novo teste `test_shellcheck` (nível `warning`), pulado se a ferramenta não existir.
+  Use `SHELLCHECK=/caminho/shellcheck` para apontar outro binário.
+- O `shfmt` **não** entrou: reformataria todos os scripts sem ganho de comportamento.
+- As checagens de DNS foram para `lib.sh` (`dns_list`, `resolve_retry`, `dns_verify`) e
+  são usadas pelo `dns.sh` e pelo `verify.sh`.
+
+### 9.5 Medição
+
+O `measure.sh` agora registra também a carga da CPU (`/proc/loadavg`), o tempo ligado e a
+porcentagem de quadros lentos da tela inicial (`dumpsys gfxinfo`). Tudo é só leitura. Os
+quadros contam desde que a tela inicial abriu: navegue 1 minuto por ela antes de medir.
+
+### 9.6 Avaliado e descartado
+
+| Ideia | Por que ficou de fora |
+|---|---|
+| `animator_duration_scale` em 0,5 | Só um teste no Fire OS 7 (mantenedor do original, PR #3); no Fire OS 8 deixa as Configurações inacessíveis. A checagem de saúde não detecta esse defeito. Ganho só visual |
+| `cmd package bg-dexopt-job` | Nenhuma medição no Fire TV; gasta CPU e armazenamento |
+| Limite de processos em segundo plano | Zera no reinício e não passa pelo journal |
+| `setprop`, bloqueio de OTA, troca de launcher, VPN | Fora da filosofia do fork |
+
+Pesquisa completa, fontes e contra-provas: [PESQUISA.md](PESQUISA.md).

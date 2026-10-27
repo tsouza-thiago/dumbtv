@@ -32,11 +32,14 @@ confirm "Aplicar o debloat em $SERIAL?" || die "cancelado"
 
 step "pacotes"
 off=$(disabled_now)
-changed=0; skipped=0; prot=0; sysoff=0; absent=0
+changed=0; skipped=0; prot=0; sysoff=0; absent=0; a11y=0; kept=""
 for p in $(targets); do
   if is_forbidden "$p"; then printf '  %-46s PULADO (protegido)\n' "$p"; continue; fi
   if ! present "$p"; then printf '  %-46s ausente\n' "$p"; absent=$((absent+1)); continue; fi
   if grep -qx -- "$p" <<<"$off"; then printf '  %-46s já desativado\n' "$p"; skipped=$((skipped+1)); continue; fi
+  if is_a11y "$p"; then
+    printf '  %-46s PULADO (serviço de acessibilidade)\n' "$p"; a11y=$((a11y+1)); kept="$kept $p"; continue
+  fi
   if [[ $APPLY == 0 ]]; then acmd pm disable-user --user 0 "$p"; continue; fi
 
   out=$(acmd pm disable-user --user 0 "$p" | head -1 | tr -d '\r')
@@ -64,6 +67,7 @@ live=$(running_names); n=0
 for p in $(targets); do
   grep -qx -- "$p" <<<"$live" || continue
   is_forbidden "$p" && continue
+  [[ " $kept " == *" $p "* ]] && continue
   uid=$(uid_of "$p")
   [[ -n $uid && $uid -ge 10000 ]] || { note "$p  uid de sistema, pulado"; continue; }
   for op in RUN_IN_BACKGROUND RUN_ANY_IN_BACKGROUND; do
@@ -85,9 +89,9 @@ while read -r ns key value _; do
 done < <(settings_lines)
 
 step "resumo"
-note "desativados $changed · já desativados $skipped · protegidos $prot · do sistema $sysoff · ausentes $absent"
+note "desativados $changed · já desativados $skipped · protegidos $prot · do sistema $sysoff · ausentes $absent · acessibilidade $a11y"
 [[ $APPLY == 0 ]] && { note "simulação: nada mudou. Para executar: ./scripts/debloat.sh --apply"; exit 0; }
-note "journal: ${JOURNAL#$ROOT/}"
+note "journal: ${JOURNAL#"$ROOT"/}"
 
 reboot_wait
 [[ $NO_REBOOT == 1 ]] && exit 0
