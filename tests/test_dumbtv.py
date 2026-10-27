@@ -393,8 +393,15 @@ class Extras(TV):
         r = self.ok('measure.sh', 'depois')
         self.assertIn('comparado com measure-antes', r.stdout)
         self.assertRegex(r.stderr, r'quadros lentos\s+-\d+\.\d pontos')        # menos processos
-        self.assertIn('carga_cpu=1.20 0.95 0.80', (self.report / sorted(
-            f.name for f in self.report.glob('measure-depois-*.txt'))[0]).read_text())
+        depois = (self.report / sorted(
+            f.name for f in self.report.glob('measure-depois-*.txt'))[0]).read_text()
+        self.assertIn('carga_cpu=1.20 0.95 0.80', depois)
+        self.assertIn('cpu_audio_pct=23', depois)
+        self.assertIn('boot_s=31', depois)
+        avg = depois.split('# memória média nas últimas 3 h (procstats)\n')[1].splitlines()
+        self.assertEqual(avg[0], '614 MB  com.example.raro')          # 1,2 GB × 50%
+        self.assertEqual(avg[1], '61 MB  init')                        # 60,5 MB arredondado
+        self.assertEqual(len(avg), 5)
         self.assertRegex(r.stderr, r'ram disponível\s+\d{3} MB\n')
         self.assertEqual(self.mutations()[-1:], ['reboot'])              # medir não muda nada
 

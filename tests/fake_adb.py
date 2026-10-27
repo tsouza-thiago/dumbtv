@@ -191,6 +191,21 @@ elif w[:2] == ['dumpsys', 'gfxinfo']:
     n = len(st['running'])                            # menos processos, menos quadros lentos
     out(f'** Graphics info for pid 1234 [{w[2]}] **', '', 'Stats since: 123456789ns',
         'Total frames rendered: 1000', f'Janky frames: {n * 10} ({n:.2f}%)')
+elif w == ['dumpsys', 'procstats', '--hours', '3']:   # formato e vírgula decimal do AFTSSS
+    out('AGGREGATED OVER LAST 3 HOURS:')
+    for n, p in enumerate(st['running']):
+        out(f'  * {p} / u0a{n} / v1:',
+            f'           TOTAL: 100% (40MB-{60 - n},5MB-70MB/1,7MB-2MB-3MB/40MB-80MB-90MB over 11)')
+    out('  * com.example.raro / u0a99 / v1:',
+        '           TOTAL: 50% (900KB-1,2GB-1,3GB/1MB-1MB-1MB/1MB-1MB-1MB over 2)')
+elif w == ['dumpsys', 'cpuinfo']:
+    out('Load: 1.20 / 0.95 / 0.80',
+        'CPU usage from 334544ms to 187394ms ago:',
+        '  23% 315/fireos.hardware.audio@2.0-service: 23% user + 0.1% kernel / faults: 12 minor',
+        '  10% 527/system_server: 7.7% user + 3.2% kernel / faults: 137 minor')
+elif w == ['logcat', '-d', '-b', 'events']:
+    if st.get('boot_events', True):                   # o buffer gira: some horas depois do boot
+        out('10-27 12:00:31.100   527   560 I boot_progress_enable_screen: 31100')
 elif w == ['cat', '/proc/sys/kernel/random/boot_id']:
     out(st['boot_id'])
 elif w[:2] == ['df', '-h']:
