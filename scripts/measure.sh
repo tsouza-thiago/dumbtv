@@ -42,10 +42,10 @@ avg3h=$(dev 'dumpsys procstats --hours 3' | tr -d '\r' | awk '
     printf "%d MB  %s\n", mb(c[2]) * pct / 100 + 0.5, name; name = "" }' | sort -rn | head -5)
 # CPU do serviço de áudio (no AFTSSS, o com.amazon.whad mantém uma captura aberta).
 audio=$(dev 'dumpsys cpuinfo' | tr -d '\r' | sed -nE 's/^ *([0-9.]+)% [0-9]+\/[^ ]*hardware\.audio[^ ]*:.*/\1/p' | head -1)
-# Duração do último boot até a tela ficar pronta. O buffer de eventos gira em
-# poucas horas: só existe na medição feita logo depois de reiniciar.
-boot=$(dev 'logcat -d -b events' | tr -d '\r' | sed -nE 's/.*boot_progress_enable_screen: *\[?([0-9]+).*/\1/p' | tail -1)
-[[ $boot =~ ^[0-9]+$ ]] && boot=$((boot / 1000)) || boot=""
+# Duração do último reinício feito pelos scripts, do pedido até o boot concluído
+# (reboot_wait em lib.sh grava em boots.tsv; precisão de 5 s, mínimo BOOT_SECONDS).
+boot=$(tail -1 "$REPORT/boots.tsv" 2>/dev/null | cut -f2)
+[[ $boot =~ ^[0-9]+$ ]] || boot=""
 
 {
   echo "rotulo=$label"
@@ -73,7 +73,7 @@ note "carga da cpu    ${load:-n/d} (1, 5 e 15 min)"
 note "ligada há       ${up:-n/d} min"
 note "tela inicial    ${jank:-n/d}% de quadros lentos em ${frames:-n/d} quadros"
 note "cpu do áudio    ${audio:-n/d}%"
-note "último boot     ${boot:+$boot s}${boot:-n/d (só logo depois de reiniciar)}"
+note "último reinício ${boot:+$boot s (do pedido até o boot concluído)}${boot:-n/d (nenhum reinício pelos scripts)}"
 [[ -n $up && $up -lt 5 ]] && warn "a TV ligou há menos de 5 min: a carga da CPU ainda está alta pelo boot"
 note "maiores consumidores:"
 while IFS= read -r l; do note "  $l"; done <<<"$top"

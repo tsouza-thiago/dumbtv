@@ -203,9 +203,6 @@ elif w == ['dumpsys', 'cpuinfo']:
         'CPU usage from 334544ms to 187394ms ago:',
         '  23% 315/fireos.hardware.audio@2.0-service: 23% user + 0.1% kernel / faults: 12 minor',
         '  10% 527/system_server: 7.7% user + 3.2% kernel / faults: 137 minor')
-elif w == ['logcat', '-d', '-b', 'events']:
-    if st.get('boot_events', True):                   # o buffer gira: some horas depois do boot
-        out('10-27 12:00:31.100   527   560 I boot_progress_enable_screen: 31100')
 elif w == ['cat', '/proc/sys/kernel/random/boot_id']:
     out(st['boot_id'])
 elif w[:2] == ['df', '-h']:

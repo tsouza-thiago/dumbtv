@@ -262,7 +262,7 @@ ask_reboot() {
 
 reboot_wait() {
   if [[ $NO_REBOOT == 1 ]]; then note "sem reiniciar (--no-reboot): reinicie a TV antes do próximo passo"; return 0; fi
-  local before
+  local before t0=$SECONDS
   before=$(boot_id)
   note "reiniciando a TV"
   ask_reboot
@@ -270,7 +270,11 @@ reboot_wait() {
   for _ in $(seq 1 30); do
     [[ $SERIAL == *:* ]] && "$ADB" connect "$SERIAL" >/dev/null 2>&1
     if [[ $(dev1 getprop sys.boot_completed) == 1 && $(boot_id) != "$before" ]]; then
-      note "TV reiniciada"; return 0
+      # Cronometrado pelo PC: o log de eventos do Fire OS gira em minutos e perde o boot.
+      note "TV reiniciada em $((SECONDS - t0)) s"
+      mkdir -p "$REPORT"
+      printf '%s\t%s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$((SECONDS - t0))" >> "$REPORT/boots.tsv"
+      return 0
     fi
     nap 5
   done

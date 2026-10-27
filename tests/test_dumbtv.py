@@ -397,7 +397,10 @@ class Extras(TV):
             f.name for f in self.report.glob('measure-depois-*.txt'))[0]).read_text()
         self.assertIn('carga_cpu=1.20 0.95 0.80', depois)
         self.assertIn('cpu_audio_pct=23', depois)
-        self.assertIn('boot_s=31', depois)
+        self.assertRegex(depois, r'boot_s=\d+\n')                    # cronometrado no reinício
+        antes = (self.report / sorted(
+            f.name for f in self.report.glob('measure-antes-*.txt'))[0]).read_text()
+        self.assertIn('boot_s=n/d', antes)                             # nenhum reinício ainda
         avg = depois.split('# memória média nas últimas 3 h (procstats)\n')[1].splitlines()
         self.assertEqual(avg[0], '614 MB  com.example.raro')          # 1,2 GB × 50%
         self.assertEqual(avg[1], '61 MB  init')                        # 60,5 MB arredondado

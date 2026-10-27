@@ -265,8 +265,19 @@ o README avisam. Nenhum pacote de `packages.txt` declara componentes de Whole Ho
 A2DP ou sincronia de áudio (conferido com `dumpsys package`).
 
 O `measure.sh` passou a registrar também a CPU do serviço de áudio (`dumpsys cpuinfo`), a
-duração do último boot (`boot_progress_enable_screen` no log de eventos, que só existe
-logo depois de reiniciar) e a memória média das últimas 3 h (`dumpsys procstats`, com a
-vírgula decimal da TV).
+duração do último reinício e a memória média das últimas 3 h (`dumpsys procstats`, com a
+vírgula decimal da TV). O reinício é cronometrado pelo PC no `reboot_wait`, do pedido até
+o boot concluído, e gravado em `report/boots.tsv`. O log de eventos do Fire OS não serve:
+ele registra cada tecla do controle e gira em poucos minutos, perdendo os eventos do boot.
+
+Terceira rodada, aplicada com aprovação do dono:
+
+| Script | Resultado no AFTSSS |
+|---|---|
+| `debloat.sh --apply` | 36 desativados, nenhum recusado pela Amazon, 2 ausentes; 5 configurações mudadas; reinício e saúde ok |
+| Testes do dono | Som pelo alto-falante Echo e sincronia, controle e voz, apps de vídeo e música, loja, configurações e app do celular: tudo ok |
+| `lockdown.sh --apply` | 4 pacotes com `RUN_IN_BACKGROUND` e `RUN_ANY_IN_BACKGROUND` em `ignore`; continua depois do reinício |
+| `dns.sh --apply` | DoT do AdGuard ligado (`UsePrivateDns: true`); todos os `must` e `ota` resolvem antes e depois do reinício (73 s); `doubleclick.net` e `mads.amazon.com` bloqueados |
+| `verify.sh` | Tudo ok depois do segundo reinício |
 
 Pesquisa completa, fontes e contra-provas: [PESQUISA.md](PESQUISA.md).
