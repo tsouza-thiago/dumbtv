@@ -6,6 +6,7 @@ Nenhuma TV de verdade é usada: ADB aponta para o simulador.
 import json
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -74,7 +75,7 @@ def fixture():
         'sticky': ['com.amazon.hedwig'],                  # continua vivo após desativar
         'boot_id': '1', 'front': LAUNCHER, 'calls': 0, 'offline_after': None,
         'internet': True,
-        'dot': {'dns.adguard-dns.com': {'up': True, 'blocks': ['doubleclick.net']}},
+        'dot': {'dns.adguard-dns.com': {'up': True, 'blocks': ['doubleclick.net', 'mads.amazon.com']}},
     }
 
 
@@ -158,6 +159,19 @@ class Lists(unittest.TestCase):
     def test_animator_nao_muda(self):
         keys = [r[1] for r in listing('settings.txt')]
         self.assertNotIn('animator_duration_scale', keys)
+
+    def test_tigris_fora_de_qualquer_acao(self):
+        # Ligado à loja de apps segundo a pesquisa; desativá-lo pode parar as atualizações dos apps.
+        self.assertIn('com.amazon.tigris', names('never-disable.txt'))
+
+    def test_shellcheck(self):
+        sc = os.environ.get('SHELLCHECK') or shutil.which('shellcheck')
+        if not sc:
+            self.skipTest('shellcheck não instalado (sudo apt install shellcheck)')
+        scripts = sorted(str(s) for s in SCRIPTS.glob('*.sh'))
+        r = subprocess.run([sc, '-x', '-P', str(SCRIPTS), '-S', 'warning', *scripts],
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
     def test_sintaxe_bash(self):
         for s in SCRIPTS.glob('*.sh'):
@@ -269,6 +283,18 @@ class Debloat(TV):
         self.assertNotEqual(r.returncode, 0)
         self.assertEqual(self.mutations(), [])
 
+    def test_servico_de_acessibilidade_e_pulado(self):
+        self.ok('preflight.sh')
+        def a11y(s):
+            s['pkgs']['com.amazon.logan']['a11y'] = True
+            s['running'].append('com.amazon.logan')
+        self.tweak(a11y)
+        r = self.ok('debloat.sh', '--apply', '-y')
+        self.assertIn('PULADO (serviço de acessibilidade)', r.stdout)
+        self.assertEqual(self.state_of('com.amazon.logan'), 0)
+        self.assertEqual(self.state_of('com.amazon.ceviche'), 3)
+        self.assertEqual([c for c in self.mutations() if 'com.amazon.logan' in c], [])
+
     def test_keep_apps(self):
         self.ok('preflight.sh')
         self.ok('debloat.sh', '--apply', '-y', conf='KEEP_APPS="com.amazon.sneakpeek"\n')
@@ -354,6 +380,9 @@ class Extras(TV):
         self.ok('debloat.sh', '--apply', '-y')
         r = self.ok('measure.sh', 'depois')
         self.assertIn('comparado com measure-antes', r.stdout)
+        self.assertRegex(r.stderr, r'quadros lentos\s+-\d+\.\d pontos')        # menos processos
+        self.assertIn('carga_cpu=1.20 0.95 0.80', (self.report / sorted(
+            f.name for f in self.report.glob('measure-depois-*.txt'))[0]).read_text())
         self.assertRegex(r.stderr, r'ram disponível\s+\d{3} MB\n')
         self.assertEqual(self.mutations()[-1:], ['reboot'])              # medir não muda nada
 
@@ -373,6 +402,10 @@ class Dns(TV):
         must = [r[1] for r in listing('dns-check.txt') if r[0] == 'must']
         self.assertIn('softwareupdates.amazon.com', must)
         self.assertIn('updates.amazon.com', must)
+        self.assertIn('device-messaging-na.amazon.com', must)       # o Prime Video depende dele
+        ota = [r[1] for r in listing('dns-check.txt') if r[0] == 'ota']
+        self.assertIn('dubri19p4y5b.cloudfront.net', ota)
+        self.assertEqual({r[0] for r in listing('dns-check.txt')}, {'must', 'ota', 'probe'})
         keys = [r[1] for r in listing('settings.dns.txt')]
         self.assertEqual(sorted(keys), ['private_dns_mode', 'private_dns_specifier'])
 
@@ -412,6 +445,39 @@ class Dns(TV):
         self.assertIn('softwareupdates.amazon.com', r.stdout)
         self.assertIn('BLOQUEADO', r.stdout)
         self.assert_back_to_initial()
+
+    def test_falha_depois_do_reinicio_desfaz_sozinho(self):
+        self.ok('preflight.sh')
+        self.tweak(lambda s: s['dot']['dns.adguard-dns.com'].update({'down_after_reboot': True}))
+        r = self.run_script('dns.sh', '--apply', '-y')
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('depois do reinício', r.stderr)
+        self.assertIn('svc power reboot', self.commands())
+        self.assert_back_to_initial()
+        self.assertEqual((self.report / 'journal.tsv').read_text(), '')
+
+    def test_sem_reinicio_avisa(self):
+        self.ok('preflight.sh')
+        r = self.ok('dns.sh', '--apply', '-y', '--no-reboot')
+        self.assertIn('checagem depois do reinício não foi feita', r.stderr)
+        self.assertNotIn('svc power reboot', self.commands())
+
+    def test_cdn_de_atualizacao_bloqueado_desfaz(self):
+        self.ok('preflight.sh')
+        self.tweak(lambda s: s['dot']['dns.adguard-dns.com']['blocks'].append('amzdigital-a.akamaihd.net'))
+        r = self.run_script('dns.sh', '--apply', '-y')
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('amzdigital-a.akamaihd.net', r.stdout)
+        self.assert_back_to_initial()
+
+    def test_cdn_aposentado_nao_trava(self):
+        self.ok('preflight.sh')
+        self.tweak(lambda s: s.update({'dead_hosts': ['amzdigitaldownloads.edgesuite.net']}))
+        r = self.ok('dns.sh', '--apply', '-y')
+        self.assertIn('amzdigitaldownloads.edgesuite.net não resolve nem antes; ignorado', r.stderr)
+        self.assertEqual(self.dns(), ('hostname', 'dns.adguard-dns.com'))
+        v = self.run_script('verify.sh')
+        self.assertIn('CDNs de atualização sem resposta', v.stderr)
 
     def test_porta_853_inacessivel_nao_muda_nada(self):
         self.ok('preflight.sh')

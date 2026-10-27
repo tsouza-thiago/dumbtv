@@ -37,8 +37,10 @@ health_check && ok "pacotes essenciais ativos e systemui rodando" || bad "saúde
 step "dns privado"
 if [[ $(dev1 settings get global private_dns_mode) == hostname ]]; then
   ok "ligado com $(dev1 settings get global private_dns_specifier)"
-  ip=$(tv_resolve www.amazon.com)
-  [[ -n $ip ]] && ! is_block_ip "$ip" && ok "a TV resolve nomes" || bad "a TV não resolve www.amazon.com: rode ./scripts/dns.sh --off --apply"
+  read -ra must <<<"$(dns_list must | tr '\n' ' ')"; read -ra ota <<<"$(dns_list ota | tr '\n' ' ')"
+  if dns_verify "${must[@]}"; then ok "a TV resolve nomes, inclusive os servidores de atualização"
+  else bad "falharam:$DNS_FAILED. Rode ./scripts/dns.sh --off --apply"; fi
+  dns_verify ${ota[@]+"${ota[@]}"} || warn "CDNs de atualização sem resposta:$DNS_FAILED (confira; pode ser um CDN aposentado)"
   warn "mantenha a Depuração ADB LIGADA: é a única forma de desligar o DNS privado"
 else
   note "desligado"

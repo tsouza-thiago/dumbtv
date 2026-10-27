@@ -58,6 +58,8 @@ confirm() {
 # --- configuração do dono (dumbtv.conf) -------------------------------------
 # Lido linha a linha, nunca com `source`: só quatro chaves e valores validados.
 HOST_RE='^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$'
+# LOCKDOWN e DNS_HOST são lidos pelos scripts que fazem source deste arquivo.
+# shellcheck disable=SC2034
 load_conf() {
   ALEXA=1; LOCKDOWN=0; KEEP_APPS=""; DNS_HOST=dns.adguard-dns.com
   [[ -f $CONF ]] || return 0
@@ -161,6 +163,9 @@ require_profile() {
 
 present() { grep -q '^package:' <<<"$(dev "pm path $1")"; }
 disabled_now() { dev 'pm list packages -d' | sed 's/^package://' | tr -d '\r'; }
+# Serviço de acessibilidade (leitor de tela, por exemplo). Desativar quebraria o
+# VoiceView de quem depende dele, então o debloat.sh pula esses pacotes.
+is_a11y() { grep -q 'android.accessibilityservice.AccessibilityService' <<<"$(dev "dumpsys package $1")"; }
 uid_of() { dev "dumpsys package $1" | sed -n 's/.*userId=\([0-9]*\).*/\1/p' | head -1; }
 running_names() { dev 'ps -A -o NAME' | tr -d '\r'; }
 
@@ -257,12 +262,12 @@ ask_reboot() {
 
 reboot_wait() {
   if [[ $NO_REBOOT == 1 ]]; then note "sem reiniciar (--no-reboot): reinicie a TV antes do próximo passo"; return 0; fi
-  local i before
+  local before
   before=$(boot_id)
   note "reiniciando a TV"
   ask_reboot
   nap "$BOOT_SECONDS"
-  for i in $(seq 1 30); do
+  for _ in $(seq 1 30); do
     [[ $SERIAL == *:* ]] && "$ADB" connect "$SERIAL" >/dev/null 2>&1
     if [[ $(dev1 getprop sys.boot_completed) == 1 && $(boot_id) != "$before" ]]; then
       note "TV reiniciada"; return 0
@@ -338,3 +343,33 @@ tv_resolve() {
 }
 
 is_block_ip() { [[ $1 =~ ^(0\.0\.0\.0|127\.0\.0\.1|::|::1)$ ]]; }
+
+# --- checagens de DNS (dns.sh e verify.sh) -----------------------------------
+dns_list() { list_of "$DATA/dns-check.txt" | awk -v k="$1" '$1==k {print $2}'; }
+
+# Resolve com até 3 tentativas. Imprime o IP ou nada.
+resolve_retry() {
+  local ip
+  for _ in 1 2 3; do
+    ip=$(tv_resolve "$1")
+    [[ -n $ip ]] && { printf '%s' "$ip"; return 0; }
+    nap 3
+  done
+  return 1
+}
+
+# Cada domínio precisa resolver para um IP real. Imprime uma linha por domínio
+# e guarda em DNS_FAILED os que falharam.
+dns_verify() {
+  local d ip
+  DNS_FAILED=""
+  for d in "$@"; do
+    if ip=$(resolve_retry "$d"); then
+      if is_block_ip "$ip"; then printf '  %-36s BLOQUEADO (%s)\n' "$d" "$ip"; DNS_FAILED="$DNS_FAILED $d"
+      else printf '  %-36s ok (%s)\n' "$d" "$ip"; fi
+    else
+      printf '  %-36s NÃO RESOLVE\n' "$d"; DNS_FAILED="$DNS_FAILED $d"
+    fi
+  done
+  [[ -z $DNS_FAILED ]]
+}

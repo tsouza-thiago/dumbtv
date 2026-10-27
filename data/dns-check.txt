@@ -1,15 +1,27 @@
-# Domínios que o dns.sh testa pela TV depois de ligar o DNS privado.
+# Domínios que o dns.sh testa pela TV depois de ligar o DNS privado e de novo
+# depois do reinício. O verify.sh repete as checagens must e ota.
 #
-# must: precisam resolver para um IP real. Se algum falhar ou vier bloqueado,
-#       o dns.sh desfaz a mudança sozinho. Inclui os servidores de atualização
-#       do Fire OS: o DNS nunca pode bloquear as correções de segurança.
+# must:  precisam resolver para um IP real. Se algum falhar ou vier bloqueado,
+#        o dns.sh desfaz a mudança sozinho. Inclui os servidores de atualização
+#        do Fire OS: o DNS nunca pode bloquear as correções de segurança.
+# ota:   servidores de download das atualizações (CDNs). Só contam se resolviam
+#        antes da mudança; aí passam a valer como must. Um CDN aposentado pela
+#        Amazon não trava o dns.sh.
 # probe: domínio de anúncio usado só para informar se o filtro está ativo.
 #        Não causa reversão (cada provedor responde de um jeito).
-
+#
+# Conferido em 27/10/2026 pelo AdGuard DNS: todos os must e ota resolvem;
+# mads.amazon.com e doubleclick.net voltam 0.0.0.0. distro-download.amazon.com
+# (citado em listas antigas) não existe mais e ficou de fora.
 must www.amazon.com
 must api.amazon.com
 must softwareupdates.amazon.com
 must updates.amazon.com
 must www.primevideo.com
+must device-messaging-na.amazon.com    # push da Amazon; o Prime Video não abre sem ele
 must www.google.com
+ota dubri19p4y5b.cloudfront.net
+ota amzdigital-a.akamaihd.net
+ota amzdigitaldownloads.edgesuite.net
 probe doubleclick.net
+probe mads.amazon.com                  # anúncios da própria Amazon

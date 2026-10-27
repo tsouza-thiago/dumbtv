@@ -8,7 +8,14 @@
 #     -> atualizador do sistema; não pode perder o segundo plano.
 #   com.amazon.device.rdmapplication, com.amazon.tv.csapp
 #     -> função pouco clara (gerenciamento do aparelho); risco desconhecido.
+#   com.fireos.usagestats.proxy
+#     -> pode alimentar a fileira de apps recentes da tela inicial; fica de fora.
+#
+# Protegidos pela Amazon no mesmo build (PS7717/5741), segundo o debloatfiretv:
+# com.amazon.device.logmanager e com.amazon.adep.
 
 com.amazon.device.metrics
 com.amazon.device.crashmanager
 com.amazon.ftvads.deeplinking
+com.amazon.device.logmanager           # gerenciador de logs
+com.amazon.adep                        # pipeline de eventos de análise
